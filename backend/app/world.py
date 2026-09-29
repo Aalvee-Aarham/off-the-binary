@@ -45,17 +45,19 @@ def parse_time(s):
 
 
 def _supply_schedule():
-    """22 arrivals (guide 8.7). Exact quantities aren't published; ours are sized to ~1 day of regional demand."""
-    rows = [("depot-gazipur", "DIESEL", 18000, 12), ("depot-patiya", "DIESEL", 16000, 14),
-            ("depot-gazipur", "PETROL", 14000, 16), ("depot-patiya", "PETROL", 18000, 20)]
-    daily = {"depot-gazipur": {"DIESEL": 22500, "PETROL": 15000, "OCTANE": 7800},
-             "depot-patiya": {"DIESEL": 19100, "PETROL": 20100, "OCTANE": 10600}}
-    for rnd in range(3):
-        for d in ("depot-gazipur", "depot-patiya"):
-            for f in FUELS:
-                rows.append((d, f, daily[d][f], 64 * (rnd + 1)))
-    return [{"id": f"supply-{i + 1:03d}", "depot_id": d, "fuel_type": f, "quantity": float(q),
-             "planned_tick": t, "actual_tick": None, "status": "SCHEDULED"} for i, (d, f, q, t) in enumerate(rows)]
+    """The real scenario's 22 arrivals (captured from the organizer image by scripts/calibrate.py in CI, scenario
+    baseline v1.0, seed 12345). Recurring top-ups are small and the schedule ENDS at tick 212: after that depots
+    only drain, so rationing is a normal regime late in a run."""
+    rows = [("supply-001", "depot-gazipur", "DIESEL", 18000, 12), ("supply-003", "depot-patiya", "DIESEL", 16000, 14),
+            ("supply-002", "depot-gazipur", "PETROL", 14000, 16), ("supply-004", "depot-patiya", "OCTANE", 9000, 20)]
+    for rnd in (1, 2, 3):
+        base = 64 * rnd
+        for j, (d, f, q) in enumerate([("depot-gazipur", "DIESEL", 12000), ("depot-gazipur", "PETROL", 10000),
+                                       ("depot-gazipur", "OCTANE", 7000), ("depot-patiya", "DIESEL", 10000),
+                                       ("depot-patiya", "PETROL", 8000), ("depot-patiya", "OCTANE", 6000)]):
+            rows.append((f"supply-{rnd}0{j + 1}", d, f, q, base + 4 * j))
+    return [{"id": i, "depot_id": d, "fuel_type": f, "quantity": float(q), "planned_tick": t, "actual_tick": None,
+             "status": "SCHEDULED"} for i, d, f, q, t in rows]
 
 
 def baseline_world():
@@ -78,9 +80,9 @@ def baseline_world():
                   "demand_multiplier": 1.0, "capacity": fuels(*cap), "inventory": fuels(*inv)}
             for sid, name, reg, prof, cap, inv in [
                 ("station-mirpur", "Mirpur Fuel Station", "region-dhaka", "urban_high", (15000, 14000, 9000), (9000, 9000, 5000)),
-                ("station-tongi", "Tongi Fuel Station", "region-dhaka", "industrial", (18000, 9000, 6000), (11000, 6000, 3500)),
-                ("station-karnaphuli", "Karnaphuli Fuel Station", "region-chattogram", "highway", (14000, 15000, 9000), (8500, 9500, 5200)),
-                ("station-coxsbazar", "Cox's Bazar Fuel Station", "region-chattogram", "regional", (12000, 12000, 7000), (7500, 7500, 4200))]},
+                ("station-tongi", "Tongi Industrial Station", "region-dhaka", "industrial", (18000, 9000, 6000), (11000, 6000, 3500)),
+                ("station-karnaphuli", "Karnaphuli Highway Station", "region-chattogram", "highway", (14000, 15000, 9000), (8500, 9500, 5200)),
+                ("station-coxsbazar", "Cox's Bazar Regional Station", "region-chattogram", "regional", (12000, 12000, 7000), (7500, 7500, 4200))]},
         routes={
             rid: {"id": rid, "source_depot_id": d, "destination_station_id": s, "transit_ticks": t,
                   "max_shipment": float(m), "status": "AVAILABLE"}
