@@ -34,6 +34,10 @@ SHIPMENTS = Counter("shipments_total", "Allocations submitted", ["outcome"])
 SERVICE_LEVEL = Gauge("service_level", "Simulator service level")
 UNMET = Gauge("unmet_liters", "Simulator unmet demand liters")
 SIM_TICK = Gauge("sim_tick", "Current simulator tick")
+ALLOC_FAILURES = Gauge("allocation_failures", "Simulator ground truth: FAILED allocations (fuel lost)")
+DECISION_LAG = Gauge("decision_lag_ticks", "Ticks between the snapshot a plan used and its first accepted allocation")
+AUTO_CANCELS = Counter("auto_cancels_total", "PENDING allocations cancelled before a known route disruption")
+INTEGRATION_BUGS = Counter("integration_bug_responses_total", "Simulator codes that mean our request was wrong", ["code"])
 
 
 class Window:

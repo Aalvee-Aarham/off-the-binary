@@ -12,7 +12,9 @@ from . import metrics as M
 log = logging.getLogger("sse")
 
 
-async def listen(base_url, on_event, transport=None):
+async def listen(base_url, on_event, transport=None, silent=lambda: False):
+    """`silent()` is the tick watchdog: the server drops slow subscribers without closing the stream (guide 6.1),
+    so a connection that only sends keepalives while the simulator runs is torn down and re-established."""
     backoff = 1.0
     async with httpx.AsyncClient(base_url=base_url, transport=transport,
                                  timeout=httpx.Timeout(5.0, read=45.0)) as http:  # keepalive every 15s
@@ -27,6 +29,8 @@ async def listen(base_url, on_event, transport=None):
                     backoff = 1.0
                     name, data = None, []
                     async for line in r.aiter_lines():
+                        if silent():
+                            raise RuntimeError("no simulation.tick while RUNNING: stream silently dropped")
                         if line.startswith("event:"):
                             name = line[6:].strip()
                         elif line.startswith("data:"):

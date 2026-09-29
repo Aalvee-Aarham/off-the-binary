@@ -1,7 +1,9 @@
-"""Digital twin of the BUP Fuel Supply Simulator, built from the integration guide (sections 5, 7.8, 8).
+"""Digital twin of the BUP Fuel Supply Simulator (integration guide sections 5, 7.8, 8).
 
-Used for: plan scoring (tournament), the local dev simulator (devsim.py), and later PPO training.
-Tick order is our best reading of the guide; phase 3 calibrates it against the real image.
+Used for: plan scoring (tournament), the local dev simulator (devsim.py), and PPO training.
+Tick semantics were calibrated against the real image (scripts/calibrate.py in CI): a step *processes the current
+tick t* (events, supply, arrivals, departures at t, demand rows labeled t) and only then advances to t+1.
+Allocations on a disrupted route FAIL at departure and the fuel is NOT refunded.
 """
 import copy
 import random
@@ -155,9 +157,7 @@ class Twin:
     def add_event(self, etype, start_tick, duration_ticks, parameters=None):
         e = {"id": len(self.events) + 1, "type": etype, "start_tick": start_tick,
              "end_tick": start_tick + duration_ticks, "status": "SCHEDULED", "parameters": parameters or {}}
-        self.events.append(e)
-        if start_tick <= self.tick:
-            self._start_event(e)
+        self.events.append(e)  # takes effect when tick start_tick is processed (never immediately)
         return e
 
     # ---- events (guide 7.8) ----
@@ -205,42 +205,40 @@ class Twin:
 
     # ---- clock ----
     def step(self):
-        self.tick += 1
-        self.sim_time += timedelta(minutes=self.tick_minutes)
+        t = self.tick  # the tick being processed
         for e in self.events:
-            if e["status"] == "SCHEDULED" and e["start_tick"] <= self.tick:
+            if e["status"] == "SCHEDULED" and e["start_tick"] <= t:
                 self._start_event(e)
-            if e["status"] == "ACTIVE" and e["end_tick"] <= self.tick:
+            if e["status"] == "ACTIVE" and e["end_tick"] <= t:
                 e["status"] = "RESOLVED"
                 self._apply(e, False)
         for a in self.supply:
-            if a["status"] != "ARRIVED" and a["planned_tick"] <= self.tick:
+            if a["status"] != "ARRIVED" and a["planned_tick"] <= t:
                 d = self.depots[a["depot_id"]]
                 d["inventory"][a["fuel_type"]] = min(d["capacity"][a["fuel_type"]], d["inventory"][a["fuel_type"]] + a["quantity"])
-                a["status"], a["actual_tick"] = "ARRIVED", self.tick
+                a["status"], a["actual_tick"] = "ARRIVED", t
         for a in self.allocations:
-            if a["status"] == "IN_TRANSIT" and a["expected_arrival_tick"] <= self.tick:
+            if a["status"] == "IN_TRANSIT" and a["expected_arrival_tick"] <= t:
                 s = self.stations[a["destination_station_id"]]
                 f = a["fuel_type"]
                 room = s["capacity"][f] - s["inventory"][f]
                 self.totals["overflow"] += max(0.0, a["quantity"] - room)
                 s["inventory"][f] += min(a["quantity"], room)
-                a["status"], a["actual_arrival_tick"] = "ARRIVED", self.tick
+                a["status"], a["actual_arrival_tick"] = "ARRIVED", t
             elif a["status"] == "PENDING":
                 r = self.routes[a["route_id"]]
-                if r["status"] != "AVAILABLE":
-                    a["status"], a["failure_reason"] = "FAILED", "ROUTE_DISRUPTED"
-                    self.depots[a["source_depot_id"]]["inventory"][a["fuel_type"]] += a["quantity"]
+                if r["status"] != "AVAILABLE":  # calibrated: fuel is lost, not refunded
+                    a["status"], a["failure_reason"] = "FAILED", "ROUTE_UNAVAILABLE"
                     self.totals["failed"] += 1
                 else:
-                    a["status"], a["departure_tick"] = "IN_TRANSIT", self.tick
-                    a["expected_arrival_tick"] = self.tick + r["transit_ticks"]
+                    a["status"], a["departure_tick"] = "IN_TRANSIT", t
+                    a["expected_arrival_tick"] = t + r["transit_ticks"]
         hour = self.sim_time.hour
         for s in self.stations.values():
             rf = self.regions[s["region_id"]]["demand_factor"]
             for f in FUELS:
                 if self.demand_fn:
-                    dem = self.demand_fn(s, f, self.tick, hour)
+                    dem = self.demand_fn(s, f, t, hour)
                 else:
                     dem = base_rate(s["demand_profile"], f, hour, rf, s["demand_multiplier"], self.tick_minutes)
                     if self.noise:
@@ -250,9 +248,11 @@ class Twin:
                 self.totals["served"] += served
                 self.totals["unmet"] += dem - served
                 self.demand_log.append({"id": len(self.demand_log) + 1, "station_id": s["id"], "fuel_type": f,
-                                        "tick": self.tick, "sim_time": self.sim_time.isoformat(),
+                                        "tick": t, "sim_time": self.sim_time.isoformat(),
                                         "demand_liters": round(dem, 3), "served_liters": round(served, 3),
                                         "unmet_liters": round(dem - served, 3)})
+        self.tick += 1
+        self.sim_time += timedelta(minutes=self.tick_minutes)
         return {"tick": self.tick, "sim_time": self.sim_time.isoformat()}
 
     # ---- read model (same shapes as /v1/*) ----

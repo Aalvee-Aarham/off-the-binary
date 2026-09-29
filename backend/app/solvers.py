@@ -149,7 +149,7 @@ def algo_greedy(P):
 
 
 def _windows(snap, H):
-    """Per relative tick 0..H: route ok / station open / depot dispatch factor, from known event windows."""
+    """Per relative *processed* tick r (0 = current tick, processed next): route ok / station open / depot open."""
     t0 = snap["tick"]
 
     def window(kind, ids_key, entities, is_on):
@@ -190,7 +190,12 @@ def algo_mpc(P):
         for t in range(H):
             if t + 1 + r["transit_ticks"] > H:
                 break
-            if route_ok[r["id"]][t] and route_ok[r["id"]][t + 1] and st_open[r["destination_station_id"]][t]:
+            # created before processing t0+t (sees status after t0+t-1), departs while processing t0+t
+            if t == 0:
+                created_ok = r["status"] == "AVAILABLE" and snap["stations"][r["destination_station_id"]]["status"] == "OPEN"
+            else:
+                created_ok = route_ok[r["id"]][t - 1] and st_open[r["destination_station_id"]][t - 1]
+            if created_ok and route_ok[r["id"]][t]:
                 for f in FUELS:
                     var(("x", r["id"], f, t), 0, None, 0.002 * r["transit_ticks"] + 0.0005 * t)
     for s in snap["stations"].values():
@@ -198,7 +203,7 @@ def algo_mpc(P):
             d = P.demand[(s["id"], f)] * (1 + 0.5 * P.sigma[(s["id"], f)])
             for k in range(1, H + 1):
                 var(("I", s["id"], f, k), 0, s["capacity"][f], 0)
-                var(("sv", s["id"], f, k), 0, float(d[k - 1]) if st_open[s["id"]][k] else 0, -(0.99 ** k))
+                var(("sv", s["id"], f, k), 0, float(d[k - 1]) if st_open[s["id"]][k - 1] else 0, -(0.99 ** k))
                 var(("o", s["id"], f, k), 0, None, 5.0)
     for did in snap["depots"]:
         for f in FUELS:
@@ -235,7 +240,7 @@ def algo_mpc(P):
             sup = np.zeros(H)
             for a in snap["supply"]:
                 if a["depot_id"] == did and a["fuel_type"] == f and a["status"] != "ARRIVED":
-                    t = max(1, a["planned_tick"] - t0)
+                    t = max(1, a["planned_tick"] - t0 + 1)  # arrives while processing planned_tick
                     if t < H:
                         sup[t] += a["quantity"]
             for t in range(H):
@@ -250,7 +255,7 @@ def algo_mpc(P):
     for j, (did, d) in enumerate(snap["depots"].items()):
         for t in range(H):
             cap = P.depots[did]["disp"] if t == 0 else d["dispatch_capacity_per_tick"] * (
-                1.0 if dep_open[did][t] else config.CONSTRAINED_DISPATCH_FACTOR)
+                1.0 if dep_open[did][t - 1] else config.CONSTRAINED_DISPATCH_FACTOR)
             ks = [x for x in xkeys if x[3] == t and snap["routes"][x[1]]["source_depot_id"] == did]
             if ks:
                 for x in ks:
@@ -287,8 +292,20 @@ def finalize(raw, snap):
     return out
 
 
+def doomed_routes(snap):
+    """Routes AVAILABLE now but disrupted when the current tick is processed (event start_tick <= tick).
+    An allocation created now departs during that processing and FAILS, losing its fuel (calibrated)."""
+    out = set()
+    for e in snap["events"]:
+        if e["type"] == "route_disruption" and e["status"] == "SCHEDULED" and e["start_tick"] <= snap["tick"]:
+            out |= set(e["parameters"].get("route_ids") or snap["routes"])
+    return out
+
+
 def check(ships, snap):
-    """Mirror of the simulator's validation order with running totals. Returns (valid, rejected)."""
+    """Mirror of the simulator's validation order with running totals, plus doomed-route protection.
+    Returns (valid, rejected)."""
+    doomed = doomed_routes(snap)
     inv = {d: dict(v["inventory"]) for d, v in snap["depots"].items()}
     used = {d: dispatch_used(snap, d) for d in snap["depots"]}
     added = {}
@@ -304,6 +321,7 @@ def check(ships, snap):
                 "DEPOT_CLOSED" if d["status"] not in USABLE_DEPOT else
                 "STATION_CLOSED" if s["status"] != "OPEN" else
                 "ROUTE_DISRUPTED" if r["status"] != "AVAILABLE" else
+                "ROUTE_DISRUPTED_AT_DEPARTURE" if r["id"] in doomed else
                 "INVALID_QUANTITY" if not q > 0 else
                 "ROUTE_CAPACITY_EXCEEDED" if q > r["max_shipment"] else
                 "INSUFFICIENT_INVENTORY" if q > inv[d["id"]][f] else

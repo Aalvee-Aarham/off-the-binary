@@ -89,7 +89,7 @@ def create_app(transport=None, start_loops=True, model_transport=None):
         tasks = []
         if start_loops:
             tasks.append(asyncio.create_task(orch.run()))
-            tasks.append(asyncio.create_task(sse.listen(config.SIM_BASE_URL, lambda n, p: orch.trigger.set(), transport)))
+            tasks.append(asyncio.create_task(sse.listen(config.SIM_BASE_URL, orch.on_sse, transport, orch.sse_silent)))
         yield
         for t in tasks:
             t.cancel()

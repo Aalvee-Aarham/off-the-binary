@@ -11,10 +11,11 @@ from .detect import Detector
 from .forecast import Forecaster, arrivals, risks as compute_risks
 from .router import Router, route_rules
 from .sim_client import SimError, SimRejected
-from .solvers import SolverError, check, evaluate, tournament
+from .solvers import SolverError, check, doomed_routes, evaluate, tournament
 
 log = logging.getLogger("orchestrator")
 TERMINAL = ("ARRIVED", "FAILED", "CANCELLED")
+BUG_CODES = ("IDEMPOTENCY_KEY_MISMATCH", "ROUTE_MISMATCH", "NOT_FOUND", "VALIDATION_ERROR")
 
 
 class Orchestrator:
@@ -34,6 +35,7 @@ class Orchestrator:
         self.flags, self.router = set(), None
         self.last_cycle = {"ok": False, "at": None, "ms": None, "error": "not started"}
         self.invalid = None
+        self.last_sse_tick = time.time()
         store.on_invalid = self.on_invalid
 
     # ---------- loop ----------
@@ -71,6 +73,9 @@ class Orchestrator:
                 self.last_decision_tick = -10 ** 9
                 for d in self.audit.list("PENDING_APPROVAL", 200):
                     self._set_status(d, "EXPIRED", "simulator reset")
+                for st in ("EXECUTED", "PARTIAL", "EXECUTING"):  # allocation ids restart at 1 after a reset
+                    for d in self.audit.list(st, 500):
+                        self._set_status(d, "EPOCH_ENDED", "simulator reset; allocation ids no longer refer to this plan")
             try:
                 self.fc.ingest(await self.store.demand_rows(self.fc.last_tick), snap)
             except SimError as e:  # forecast keeps its previous corrections
@@ -79,6 +84,7 @@ class Orchestrator:
             raised = self._analyze(snap)
             self.router = await self.routing.route(snap, self.flags, self.risks, list(self.det.active.values()))
             self._reconcile(snap)
+            await self._cancel_doomed(snap)
             await self._process_pending(snap)
             decision = None
             due = snap["tick"] - self.last_decision_tick >= config.DECIDE_EVERY_TICKS or any(
@@ -113,8 +119,8 @@ class Orchestrator:
         hard, reasons, notes = [], [], []
         if self.mode == "MANUAL":
             hard.append("manual approval mode")
-        if snap["stale"]:
-            hard.append("simulator reports stale data")
+        if snap["stale"]:  # soft: stale only flags GETs; the simulator still validates every POST against true state
+            reasons.append("simulator reports stale data")
         if self.store.degraded:
             hard.append("degraded: serving cached state")
         # Model doubts only gate when the model's pick drives the plan unverified (budget mode = partial tournament).
@@ -187,10 +193,17 @@ class Orchestrator:
                 a = await self.sim.create_allocation(body)
                 d["results"].append({"i": i, "ok": True, "allocation_id": a["id"], "status": a["status"]})
                 M.SHIPMENTS.labels("accepted").inc()
+                if not ok:
+                    d["lag_ticks"] = a["created_tick"] - d["tick"]
+                    M.DECISION_LAG.set(d["lag_ticks"])
                 ok += 1
             except SimRejected as e:
                 d["results"].append({"i": i, "ok": False, "code": e.code, "message": e.message})
                 M.SHIPMENTS.labels(f"rejected_{e.code}").inc()
+                if e.code in BUG_CODES:  # our request was malformed: never retry, page someone
+                    M.INTEGRATION_BUGS.labels(e.code).inc()
+                    self.audit.alert("raised", {"type": "integration_bug", "severity": "critical", "entity": "executor",
+                                                "tick": d["tick"], "message": f"{e.code}: {e.message}"[:300]})
             except SimError as e:
                 d["results"].append({"i": i, "ok": False, "code": e.code, "message": e.message, "retryable": True})
                 M.SHIPMENTS.labels("unavailable").inc()
@@ -265,12 +278,42 @@ class Orchestrator:
                     d["status"] = "COMPLETED" if d["status"] == "EXECUTED" else "COMPLETED_PARTIAL"
                 self.audit.save(d)
 
+    async def _cancel_doomed(self, snap):
+        """A PENDING allocation on a route that is (or is about to be) disrupted will FAIL and lose its fuel.
+        Cancelling refunds the depot, and the next plan reroutes."""
+        doomed = doomed_routes(snap) | {r["id"] for r in snap["routes"].values() if r["status"] != "AVAILABLE"}
+        for a in snap["allocations"]:
+            if a["status"] == "PENDING" and a["route_id"] in doomed:
+                try:
+                    await self.sim.cancel_allocation(a["id"])
+                    M.AUTO_CANCELS.inc()
+                    log.info("allocation.auto_cancelled", extra={"event": "allocation.auto_cancelled",
+                                                                 "allocation_id": a["id"], "route": a["route_id"]})
+                except SimError as e:  # already departed (CANNOT_CANCEL) or sim down: nothing more to do
+                    log.info("allocation.cancel_failed", extra={"event": "allocation.cancel_failed", "error": str(e)})
+
+    def on_sse(self, name, payload):
+        """SSE is a hint: wake the loop. Also surface simulator crash notices and feed the tick watchdog."""
+        if name in ("simulation.tick", "sse.connected"):  # a fresh connection gets a full grace period
+            self.last_sse_tick = time.time()
+        if name == "simulator.notice" and payload.get("level") == "error":
+            a = {"type": "simulator_error", "severity": "critical", "entity": "simulator",
+                 "message": str(payload.get("message"))[:300]}
+            self.audit.alert("raised", a)
+            M.ALERTS.labels(a["type"], a["severity"]).inc()
+        self.trigger.set()
+
+    def sse_silent(self):
+        """True when the simulator is RUNNING but no tick event arrived for 3s: a silently dropped subscriber."""
+        snap = self.store.snap
+        return bool(snap and snap["status"] == "RUNNING" and time.time() - self.last_sse_tick > 3.0)
+
     async def _process_pending(self, snap):
         """AUTO_GATED: soft-gated plans execute once their review window passes untouched. Everything else expires."""
         for d in self.audit.list("PENDING_APPROVAL", 50):
             age = snap["tick"] - d["tick"]
             soft = not d["gate"].get("hard") and not d.get("edited_by") and self.mode == "AUTO_GATED"
-            if soft and not snap["stale"] and not self.store.degraded and age >= config.REVIEW_WINDOW_TICKS:
+            if soft and not self.store.degraded and age >= config.REVIEW_WINDOW_TICKS:
                 valid, rejected = check(d["shipments"], snap)
                 d["shipments"], d["dropped_on_approve"] = valid, rejected
                 d["note"] = f"no operator action within {config.REVIEW_WINDOW_TICKS}-tick review window"

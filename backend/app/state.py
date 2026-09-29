@@ -75,6 +75,7 @@ class StateStore:
             M.SIM_TICK.set(snap["tick"])
             M.SERVICE_LEVEL.set(snap["metrics"]["service_level"])
             M.UNMET.set(snap["metrics"]["unmet_demand_liters"])
+            M.ALLOC_FAILURES.set(snap["metrics"]["allocation_failures"])
             return snap
 
     async def _fetch(self):

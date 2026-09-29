@@ -193,7 +193,9 @@ class Router:
             if len(self.failed) > 256:
                 self.failed.pop(next(iter(self.failed)))
             M.FALLBACKS.labels(f"router_{src}_failed").inc()
-            log.warning("router.model_failed", extra={"event": "router.model_failed", "model": src, "error": str(e)[:200]})
+            quiet = "breaker open" in str(e) or "disabled" in str(e)
+            (log.debug if quiet else log.warning)("router.model_failed", extra={"event": "router.model_failed", "model": src,
+                                                                                 "error": str(e)[:200]})
 
     def record_outcome(self, winner):
         """Score each source's answer *for the current situation* against the tournament winner."""

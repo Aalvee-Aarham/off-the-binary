@@ -107,3 +107,27 @@ def test_api_surface_and_auth():
                               "route_id": "route-gazipur-mirpur", "fuel_type": "DIESEL", "quantity": 99999}]}
         assert c.post("/api/decisions/manual", json=bad, headers=h).status_code == 422
         assert "http_requests_total" in c.get("/metrics").text
+
+
+def test_doomed_route_blocked_and_pending_cancelled():
+    """Calibrated: an allocation departing onto a disrupted route FAILS and loses its fuel."""
+    async def go():
+        sim, store, o = stack()
+        for _ in range(10):
+            devsim.S.step()
+        snap = await store.refresh()
+        ship = {"source_depot_id": "depot-gazipur", "destination_station_id": "station-mirpur",
+                "route_id": "route-gazipur-mirpur", "fuel_type": "DIESEL", "quantity": 1000.0}
+        a = await sim.create_allocation({"idempotency_key": "t-doom", **ship})  # PENDING now
+        devsim.S.tw.add_event("route_disruption", snap["tick"], 5, {"route_ids": ["route-gazipur-mirpur"]})
+        snap = await store.refresh()
+        from app.solvers import check
+        _, rej = check([ship], snap)
+        assert rej and rej[0]["code"] == "ROUTE_DISRUPTED_AT_DEPARTURE"
+        inv = snap["depots"]["depot-gazipur"]["inventory"]["DIESEL"]
+        await o._cancel_doomed(snap)
+        snap = await store.refresh()
+        assert next(x for x in snap["allocations"] if x["id"] == a["id"])["status"] == "CANCELLED"
+        assert snap["depots"]["depot-gazipur"]["inventory"]["DIESEL"] == inv + 1000  # refunded, not lost
+
+    asyncio.run(go())

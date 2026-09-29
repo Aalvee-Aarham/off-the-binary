@@ -2,8 +2,8 @@ import os
 
 
 def _env(name, default, cast=str):
-    v = os.getenv(name)
-    return default if v in (None, "") else cast(v)
+    v = (os.getenv(name) or "").split(" #")[0].strip()  # docker env_file keeps inline comments in the value
+    return default if v == "" else cast(v)
 
 
 SIM_BASE_URL = _env("SIM_BASE_URL", "http://localhost:8000")

@@ -89,7 +89,7 @@ def probes(sim):
     transit = sim.get("/v1/routes")[0]["transit_ticks"]
     out["timing"] = {"created": t0, "departure": seen.get("departure_tick"), "arrival": seen.get("actual_arrival_tick"),
                      "transit_ticks": transit,
-                     "matches_twin": seen.get("departure_tick") == t0 + 1 and seen.get("actual_arrival_tick") == t0 + 1 + transit}
+                     "matches_twin": seen.get("departure_tick") == t0 and seen.get("actual_arrival_tick") == t0 + transit}
 
     sim.reset()
     cap = sim.get("/v1/depots/depot-gazipur")["dispatch_capacity_per_tick"]
@@ -133,7 +133,7 @@ def probes(sim):
         sim.post("/admin/step")
     rows = sim.get("/v1/demand-history", limit=12)
     ticks = [r["tick"] for r in rows]
-    out["demand_history"] = {"limit12_ticks": sorted(set(ticks)), "newest_first": bool(ticks) and max(ticks) == 3,
+    out["demand_history"] = {"limit12_ticks": sorted(set(ticks)), "newest_first": bool(ticks) and max(ticks) == 2,  # rows carry the processed tick
                              "rows_per_tick": len([r for r in sim.get("/v1/demand-history", limit=2000) if r["tick"] == 1])}
     return out
 
@@ -172,7 +172,7 @@ def lockstep(sim, ticks):
                 if sc != tc:
                     accept_mismatch.append({"tick": s["tick"], "key": key, "sim": sc, "twin": tc})
         sim.post("/admin/step")
-        rows = [r for r in sim.get("/v1/demand-history", limit=24) if r["tick"] == s["tick"] + 1]
+        rows = [r for r in sim.get("/v1/demand-history", limit=24) if r["tick"] == s["tick"]]  # rows of the tick just processed
         rows_all += rows
         for r in rows:
             observed[(r["station_id"], r["fuel_type"], r["tick"])] = r["demand_liters"]

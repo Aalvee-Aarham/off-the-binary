@@ -74,7 +74,7 @@ class Forecaster:
         """Known future multiplier changes: scheduled spikes start, active spikes end."""
         m = np.full(H, 1.0)
         t0 = snap["tick"]
-        ticks = np.arange(t0 + 1, t0 + H + 1)
+        ticks = np.arange(t0, t0 + H)  # path index i <-> processed tick t0+i
         for e in snap["events"]:
             if e["type"] != "demand_spike" or e["status"] == "RESOLVED":
                 continue
@@ -90,9 +90,9 @@ class Forecaster:
         return m
 
     def paths(self, snap, H):
-        """P50 demand per tick for k=1..H, per (station, fuel)."""
+        """P50 demand per (station, fuel); index i = demand of processed tick t0+i (current tick is processed next)."""
         t0 = parse_time(snap["sim_time"])
-        hours = [(t0 + timedelta(minutes=snap["tick_minutes"] * k)).hour for k in range(1, H + 1)]
+        hours = [(t0 + timedelta(minutes=snap["tick_minutes"] * k)).hour for k in range(H)]
         out = {}
         for s in snap["stations"].values():
             mp = self._mult_path(snap, s, H)
@@ -109,8 +109,8 @@ def arrivals(snap, H):
         if a["status"] not in ACTIVE_ALLOC:
             continue
         if a["status"] == "IN_TRANSIT" and a["expected_arrival_tick"] is not None:
-            k = a["expected_arrival_tick"] - snap["tick"]
-        else:
+            k = a["expected_arrival_tick"] - snap["tick"] + 1
+        else:  # departs when the current tick is processed, lands transit ticks later
             k = 1 + routes.get(a["route_id"], {}).get("transit_ticks", 2)
         k = max(1, k)
         if k <= H:
