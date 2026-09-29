@@ -243,6 +243,11 @@ async def add_fault(request: Request):
     return f
 
 
+@app.get("/admin/audit")
+def audit(limit: int = 200):
+    return []  # devsim keeps no audit log; the real image does
+
+
 @app.post("/admin/faults/clear")
 def clear():
     S.faults = []

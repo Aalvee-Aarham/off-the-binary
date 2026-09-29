@@ -212,6 +212,101 @@ def lockstep(sim, ticks):
             "served_liters": {"sim": m["served_demand_liters"], "twin": round(tw.totals["served"], 1)}}, rows_all, s
 
 
+def twin_of(s, demand):
+    """Fresh twin holding the simulator's exact state (all allocations, supply, events)."""
+    return Twin(dict(tick=s["tick"], sim_time=s["sim_time"], tick_minutes=s["tick_minutes"], seed=0,
+                     regions=s["regions"], depots=s["depots"], stations=s["stations"], routes=s["routes"],
+                     supply=s["supply"], allocations=s["allocations"], events=s["events"]),
+                demand_fn=lambda st, f, t, h: demand.get((st["id"], f, t), 0.0))
+
+
+def diff(s2, tw):
+    out = {}
+    for kind in ("depots", "stations"):
+        for eid, e in s2[kind].items():
+            te = getattr(tw, kind)[eid]
+            for f in FUELS:
+                if abs(e["inventory"][f] - te["inventory"][f]) > 1:
+                    out[f"{kind[:-1]}_inventory/{eid}/{f}"] = {"sim": e["inventory"][f], "twin": round(te["inventory"][f], 1),
+                                                               "capacity": e["capacity"][f]}
+            if e["status"] != te["status"]:
+                out[f"{kind[:-1]}_status/{eid}"] = {"sim": e["status"], "twin": te["status"]}
+    for rid, r in s2["routes"].items():
+        if r["status"] != tw.routes[rid]["status"]:
+            out[f"route_status/{rid}"] = {"sim": r["status"], "twin": tw.routes[rid]["status"]}
+    ta = {a["id"]: a for a in tw.allocations}
+    for a in s2["allocations"]:
+        t = ta.get(a["id"])
+        keys = ("status", "departure_tick", "expected_arrival_tick", "actual_arrival_tick")
+        if t and any(a[k] != t[k] for k in keys):
+            out[f"allocation/{a['id']}"] = {"sim": {k: a[k] for k in keys}, "twin": {k: t[k] for k in keys}}
+    ts = {a["id"]: a for a in tw.supply}
+    for a in s2["supply"]:
+        t = ts[a["id"]]
+        keys = ("status", "planned_tick", "actual_tick", "quantity")
+        if any((round(a[k]) if k == "quantity" else a[k]) != (round(t[k]) if k == "quantity" else t[k]) for k in keys):
+            out[f"supply/{a['id']}"] = {"sim": {k: a[k] for k in keys}, "twin": {k: t[k] for k in keys}}
+    return out
+
+
+def onestep(sim, ticks):
+    """Per tick: copy the sim's exact state into a fresh twin, step both once with identical demand, compare.
+    Isolates rule errors from accumulated drift. Mismatches carry the simulator's own audit log for that tick."""
+    sim.reset()
+    for typ, start, dur, p in SCRIPT:
+        sim.post("/admin/events", {"type": typ, "start_tick": start, "duration_ticks": dur, "parameters": p})
+    fc, by_kind, examples, clean = Forecaster(), defaultdict(int), [], 0
+    s = sim.snap()
+    for i in range(ticks):
+        if i % 2 == 0:
+            p, a = fc.paths(s, H), arrivals(s, H)
+            ships, _ = check(finalize(ALGOS["lp"](build_problem(s, fc, p, a, risks(s, fc, p, a, H), H)), s), s)
+            for j, x in enumerate(ships):
+                sim.alloc(f"os-{i}-{j}", x["source_depot_id"], x["destination_station_id"], x["route_id"],
+                          x["fuel_type"], x["quantity"])
+            s = sim.snap()
+        demand = {}
+        tw = twin_of(s, demand)
+        sim.post("/admin/step")
+        rows = [r for r in sim.get("/v1/demand-history", limit=24) if r["tick"] == s["tick"]]
+        for r in rows:
+            demand[(r["station_id"], r["fuel_type"], r["tick"])] = r["demand_liters"]
+        tw.step()
+        s2 = sim.snap()
+        fc.ingest(rows, s2)
+        d = diff(s2, tw)
+        if not d:
+            clean += 1
+        for k in d:
+            by_kind[k.split("/")[0]] += 1
+        if d and len(examples) < 6:
+            audit = [x for x in sim.get("/admin/audit", limit=300) if x.get("tick") == s["tick"]
+                     and x.get("action") != "simulation.tick"]
+            examples.append({"tick": s["tick"], "diffs": dict(list(d.items())[:10]),
+                             "sim_audit": [{k: x.get(k) for k in ("action", "entity_type", "entity_id", "result", "metadata_json")}
+                                           for x in audit][:25],
+                             "demand_rows": len(rows)})
+        s = s2
+    foreign = [a["idempotency_key"] for a in s["allocations"] if not a["idempotency_key"].startswith(("os-", "cal-"))]
+    return {"ticks": ticks, "clean_ticks": clean, "mismatch_counts_by_kind": dict(by_kind), "examples": examples,
+            "foreign_allocations": foreign[:10],
+            "valid": not foreign}  # another client (e.g. a running backend) writing to the sim invalidates the comparison
+
+
+def overflow_probe(sim):
+    """Do arrivals beyond station capacity get clipped (twin) or kept?"""
+    sim.reset()
+    R = ("depot-gazipur", "station-tongi", "route-gazipur-tongi", "DIESEL")
+    c1 = code_of(*sim.alloc("cal-of-1", *R, 6500))
+    sim.post("/admin/step")
+    c2 = code_of(*sim.alloc("cal-of-2", *R, 6500))
+    for _ in range(4):
+        sim.post("/admin/step")
+    st = sim.get("/v1/stations/station-tongi")
+    return {"codes": [c1, c2], "tongi_diesel_after": st["inventory"]["DIESEL"], "capacity": st["capacity"]["DIESEL"],
+            "clipped_at_capacity": st["inventory"]["DIESEL"] <= st["capacity"]["DIESEL"] + 1}
+
+
 def demand_formula(rows, snap):
     ratios = defaultdict(list)
     for r in rows:
@@ -233,7 +328,11 @@ def main():
     a = ap.parse_args()
     sim = Sim(a.base)
     rep = {"probes": probes(sim)}
+    rep["probes"]["station_overflow"] = overflow_probe(sim)
+    rep["onestep"] = onestep(sim, a.ticks)
     rep["lockstep"], rows, snap = lockstep(sim, a.ticks)
+    if not rep["onestep"]["valid"]:
+        print("WARNING: another client created allocations during calibration; stop the backend and rerun")
     rep["demand_formula"] = demand_formula(rows, snap)
     sim.reset()
     print(json.dumps({k: v for k, v in rep.items() if k != "demand_formula"}, indent=2))

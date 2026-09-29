@@ -43,11 +43,18 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12", cache: pip, cache-dependency-path: backend/requirements*.txt}
       - run: pip install -r backend/requirements.txt
-      - name: Build + deploy (simulator, backend, prometheus; ml-service skipped -> rule router)
+      - name: Start the real simulator image alone
         run: |
           cp .env.example .env && sed -i "s/^ADMIN_TOKEN=.*/ADMIN_TOKEN=$ADMIN_TOKEN/" .env
+          docker compose up -d --no-deps simulator
+          for i in $(seq 1 60); do curl -fs localhost:8000/v1/health && break; sleep 2; done
+      - name: Calibrate digital twin against the real simulator (before the backend exists, so nothing else writes)
+        working-directory: backend
+        run: python -m scripts.calibrate --base http://localhost:8000 --ticks 120 --out ../calibration.json
+      - name: Build + deploy (backend, prometheus; ml-service skipped -> rule router)
+        run: |
           docker compose build backend
-          docker compose up -d --no-deps simulator backend prometheus
+          docker compose up -d --no-deps backend prometheus
       - name: Health check
         run: |
           for i in $(seq 1 60); do
@@ -56,9 +63,6 @@ jobs:
           done
           curl -fs localhost:8080/api/health | python -m json.tool
           test "$s" = healthy
-      - name: Calibrate digital twin against the real simulator image
-        working-directory: backend
-        run: python -m scripts.calibrate --base http://localhost:8000 --ticks 120 --out ../calibration.json
       - name: Run the simulator + inject a crisis, let the backend decide
         run: |
           H="-H X-Admin-Token:$ADMIN_TOKEN -H Content-Type:application/json"
