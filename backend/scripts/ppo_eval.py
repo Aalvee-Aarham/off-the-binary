@@ -7,7 +7,7 @@ import json
 import statistics
 
 from app.policy import MODELS, PPOPolicy, active_version, set_active
-from scripts.bench import crisis, run
+from scripts.bench import run
 
 
 def spike(tw):
@@ -15,16 +15,25 @@ def spike(tw):
 
 
 def disruption(tw):
-    tw.add_event("route_disruption", 30, 150, {"route_ids": ["route-gazipur-mirpur", "route-patiya-karnaphuli"]})
+    """Tongi and Cox's Bazar each have exactly ONE route. Scheduled in advance (visible in /v1/events), so a policy
+    with foresight pre-positions stock; a reactive one runs them dry."""
+    tw.add_event("route_disruption", 60, 60, {"route_ids": ["route-gazipur-tongi", "route-patiya-coxsbazar"]})
 
 
 def shortfall(tw):
-    tw.add_event("shipment_delay", 20, 1, {"delay_ticks": 60})
-    tw.add_event("supply_shortfall", 25, 1, {"factor": 0.4})
+    tw.add_event("shipment_delay", 5, 1, {"delay_ticks": 90})
+    tw.add_event("supply_shortfall", 6, 1, {"factor": 0.25})
 
 
-SUITE = {"normal": None, "demand_spike": spike, "route_disruption": disruption, "supply_shortfall": shortfall,
-         "combined": crisis}
+def combined(tw):
+    tw.add_event("demand_spike", 30, 100, {"multiplier": 1.7})
+    tw.add_event("route_disruption", 50, 50, {"route_ids": ["route-gazipur-tongi"]})
+    tw.add_event("station_outage", 80, 16, {"station_ids": ["station-mirpur"]})
+    tw.add_event("supply_shortfall", 10, 1, {"factor": 0.5})
+
+
+SUITE = {"normal": None, "demand_spike": spike, "single_route_disruption": disruption, "supply_shortfall": shortfall,
+         "combined": combined}
 
 
 def evaluate(policies, ticks, seeds):

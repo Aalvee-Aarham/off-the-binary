@@ -142,9 +142,12 @@ def create_app(transport=None, start_loops=True, model_transport=None, llm_trans
             "jev": await model_health(o, "jev"),
             "llm_pool": o.llm.health() if o.llm else {"status": "not_configured"},
         }
-        states = [c["status"] for c in comps.values()]
-        overall = "down" if "down" in states[:4] else "degraded" if "degraded" in states else "healthy"
-        return {"status": overall, "version": config.VERSION, "mode": o.mode, "degraded_mode": o.store.degraded,
+        core = ("backend_api", "database", "simulator", "event_stream", "prediction", "decision_engine")
+        states = [comps[k]["status"] for k in core]  # optional components (models, LLM) have fallbacks
+        overall = "down" if "down" in states[:3] else "degraded" if "degraded" in states else "healthy"
+        optional_down = [k for k in comps if k not in core and comps[k]["status"] in ("down", "degraded")]
+        return {"status": overall, "optional_degraded": optional_down, "version": config.VERSION, "mode": o.mode,
+                "degraded_mode": o.store.degraded,
                 "components": comps, "api": M.WINDOW.summary(), "last_invalid_response": o.invalid}
 
     async def model_health(o, name):

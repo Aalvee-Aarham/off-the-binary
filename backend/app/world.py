@@ -210,9 +210,6 @@ class Twin:
         for e in self.events:
             if e["status"] == "SCHEDULED" and e["start_tick"] <= t:
                 self._start_event(e)
-            if e["status"] == "ACTIVE" and e["end_tick"] < t:  # calibrated: still in force while end_tick is processed
-                e["status"] = "RESOLVED"
-                self._apply(e, False)
         for a in self.supply:
             if a["status"] != "ARRIVED" and a["planned_tick"] <= t:
                 d = self.depots[a["depot_id"]]
@@ -252,6 +249,10 @@ class Twin:
                                         "tick": t, "sim_time": self.sim_time.isoformat(),
                                         "demand_liters": round(dem, 3), "served_liters": round(served, 3),
                                         "unmet_liters": round(dem - served, 3)})
+        for e in self.events:  # calibrated (sim audit order): resolution is the last thing processed in end_tick
+            if e["status"] == "ACTIVE" and e["end_tick"] <= t:
+                e["status"] = "RESOLVED"
+                self._apply(e, False)
         self.tick += 1
         self.sim_time += timedelta(minutes=self.tick_minutes)
         return {"tick": self.tick, "sim_time": self.sim_time.isoformat()}

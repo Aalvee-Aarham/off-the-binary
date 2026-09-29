@@ -267,11 +267,29 @@ docker-compose.yml  .env.example  .github/workflows/ci.yml
 |---|---|---|
 | 1 | compose + sim_client (retry/breaker/validate/cache) + SSE/poll + state + `/api/health`, `/api/state` + metrics | survives every `/admin/faults` type |
 | 2 | forecast + detectors + solvers A1–A6 + constraint checker + executor + audit + gate + minimal UI | runs 500 ticks autonomously with LP, service_level logged |
-| 3 | digital twin + calibration test | twin drift < 2%. *Status: twin built. `scripts/calibrate.py` has probes + lockstep run and shows 0 drift vs devsim. The run against the real image is pending Docker.* |
+| 3 | digital twin + calibration test | twin drift < 2%. *Status: done. One-step check against the real image in CI: 119/120 ticks exact; the last mismatch (event end inclusive) is fixed. Probes documented in README.* |
 | 4 | ml-service with Laya router + rule safety net + state-signature cache + compare mode | Laya routing live, fallback on kill works. *Status: done. Routing is non-blocking; zero-shot Laya measured weak and slow on CPU (see README); killing Laya falls back to rules with no service loss.* |
-| 5 | PPO env + training + eval suite + promotion/rollback + bandit + algorithm tournament on twin + ML residual forecast/delay classifier | PPO vs baselines table + router-accuracy-vs-tournament in `docs/` |
-| 6 | LLM key pool + explanations/incident summaries/ask | all-keys-down → template |
-| 7 | Grafana dashboard, alerts, load test + report, CI workflow, docs + architecture diagram | full demo script passes end-to-end. *Status: done, except the PPO/LLM panels and the final load-test rerun, which come after phases 5–6. Load test uses a Python/httpx generator instead of k6 (no extra tool; runs locally and in CI).* |
-| 8 | Jev integration (when key arrives) + Laya-vs-Jev report | compare stats in Grafana |
+| 5 | PPO env + training + eval suite + promotion/rollback + bandit + algorithm tournament on twin | PPO vs baselines table. *Status: code, bandit and tournament done; PPO trained on the calibrated twin, results in docs/rl.md. ML residual forecast and delay classifier **dropped**: demand = documented formula + i.i.d. noise (5.1% MAPE ≈ noise floor), and delays/failures are directly observable (PLAN_GAPS A12).* |
+| 6 | LLM key pool + explanations/incident summaries/ask | all-keys-down → template. *Status: done. Verified live: qwen3.8-27b (Groq, ~0.7 s), gemini-3.5-flash-lite (~2 s); expired keys auto-disabled.* |
+| 7 | Grafana dashboard, alerts, load test + report, CI workflow, docs + architecture diagram | full demo script passes end-to-end. *Status: done. 43 panels, 11 alert rules, load test (CI: 500 RPS state, 20 decisions/s, 0% errors), scripted demo runs in CI against the real image.* |
+| 8 | Jev integration (when key arrives) + Laya-vs-Jev report | compare stats in Grafana. *Status: done. Jev: regime 87.5%, algorithm near-best 75%, p50 452 ms, ~$0.00004/call, hourly budget cap. Laya fine-tuning: docs/laya-finetune.md.* |
 
 Demo script (maps to problem statement §22): normal ops → inject demand spike → CUSUM detects before the event is read → risk alert → router: `demand_spike → robust_lp` → twin shows 72%→19% → operator inspects/edits → route disruption + shipment delay (combined) → reroute/MPC/rationing → kill ml-service → fallback to rules + LP, alert fires → restore → inject `error_rate` 0.5 → retries/breaker/degraded mode visible in Grafana → recovery.
+
+---
+
+## 15. Gap analysis status (PLAN_GAPS.md)
+
+**Done:**
+- A1 reset/epochs · A2 probe uses a faultable call · A3 rate breaker · A4 coalescing loop + decision-lag metric · A5 review window, TTL, stale is soft, MANUAL never supersedes · A6 start mode explicit + controls · A7 error envelopes + integration-bug alerts · A8 SSE watchdog + crash notices
+- A9 demand history persisted per epoch · A10 live multiplier + scheduled events · A11 supply outlook · A12 classifier dropped · A13 self-imposed constraint (documented) · A15 auto-cancel before disruption · A16 route-dependency bottleneck · A18 ground-truth KPIs · A19/A22 verified by calibration · A20 configurable `SIM_BASE_URL` · A21 `/admin/audit` timeline
+- B2 README · B5 evidence in CI · B8 observability · B9 model versioning/rollback/audit · B10 scripted demo
+- D2 plan TTL · D3 recovery metric · D6 region view · D7 uncertainty notes · D8 binding constraints · D12 scenario identity · D13 timing (calibrated) · D14 alerts in Grafana
+
+**Deliberately not done (with reason):**
+- A14 stricter capacity check: the twin measures overflow in plan scoring, and the calibration showed the simulator clips arrivals.
+- A17 partial snapshots: all-or-nothing keeps a consistent state; the rate breaker and retries handle flakiness.
+- B1 richer operator UI: owner's choice (backend priority).
+- D11 `/v1/allocations` growth: the API has no paging.
+- D5 RL on the real simulator: twin-only for now; the twin is calibrated (one-step exact), so the gap is small.
+

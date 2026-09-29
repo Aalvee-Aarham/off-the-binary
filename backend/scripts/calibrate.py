@@ -327,7 +327,11 @@ def main():
     ap.add_argument("--out")
     a = ap.parse_args()
     sim = Sim(a.base)
-    rep = {"probes": probes(sim)}
+    sim.reset()
+    w = sim.snap()  # the real scenario's initial world (supply schedule quantities are not documented)
+    rep = {"world_at_reset": {k: w[k] for k in ("tick", "sim_time", "tick_minutes", "seed", "scenario_id", "regions",
+                                                  "depots", "stations", "routes", "supply")}}
+    rep["probes"] = probes(sim)
     rep["probes"]["station_overflow"] = overflow_probe(sim)
     rep["onestep"] = onestep(sim, a.ticks)
     rep["lockstep"], rows, snap = lockstep(sim, a.ticks)
