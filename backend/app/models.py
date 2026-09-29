@@ -79,7 +79,7 @@ class Event(_M):
     start_tick: int
     end_tick: int
     status: str
-    parameters: dict = {}
+    parameters: dict = Field(default_factory=dict)
 
 
 class Allocation(_M):
@@ -112,7 +112,7 @@ class DemandRow(_M):
 class Metrics(_M):
     served_demand_liters: float = Field(ge=0)
     unmet_demand_liters: float = Field(ge=0)
-    service_level: float = Field(ge=0, le=1)
+    service_level: float = Field(ge=0, le=1.01)
     allocation_liters: float = Field(ge=0)
     allocation_failures: int = Field(ge=0)
 

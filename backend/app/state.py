@@ -18,13 +18,15 @@ def validate(snap):
     for kind in ("depots", "stations"):
         for e in snap[kind].values():
             for f in FUELS:
-                if e["inventory"][f] > e["capacity"][f] * 1.01 + 1:
-                    bad.append(f"{e['id']} {f} inventory {e['inventory'][f]} > capacity {e['capacity'][f]}")
-            if e["region_id"] not in snap["regions"]:
-                bad.append(f"{e['id']} unknown region {e['region_id']}")
+                inv = e.get("inventory", {}).get(f, 0.0)
+                cap = e.get("capacity", {}).get(f, 0.0)
+                if inv > cap * 1.01 + 1:
+                    bad.append(f"{e.get('id', 'unknown')} {f} inventory {inv} > capacity {cap}")
+            if e.get("region_id") not in snap["regions"]:
+                bad.append(f"{e.get('id', 'unknown')} unknown region {e.get('region_id')}")
     for r in snap["routes"].values():
-        if r["source_depot_id"] not in snap["depots"] or r["destination_station_id"] not in snap["stations"]:
-            bad.append(f"{r['id']} references unknown depot/station")
+        if r.get("source_depot_id") not in snap["depots"] or r.get("destination_station_id") not in snap["stations"]:
+            bad.append(f"{r.get('id', 'unknown')} references unknown depot/station")
     if not snap["depots"] or not snap["stations"] or not snap["routes"]:
         bad.append("empty world")
     return bad
@@ -100,9 +102,10 @@ class StateStore:
 
     async def demand_rows(self, since_tick):
         """Only the rows we haven't seen: 12 per tick, clamped to the API's 2000 max."""
-        n = 2000 if since_tick < 0 else min(2000, max(24, 12 * (self.snap["tick"] - since_tick + 2)))
+        current_tick = self.snap["tick"] if self.snap else 0
+        n = 2000 if since_tick < 0 else min(2000, max(24, 12 * (current_tick - since_tick + 2)))
         rows = await self.sim.get("/v1/demand-history", limit=n)
-        if rows and len(rows) == n and max(r["tick"] for r in rows) < self.snap["tick"] - 2:
+        if rows and len(rows) == n and max((r.get("tick", 0) for r in rows), default=0) < current_tick - 2:
             # guide doesn't state sort order; if it's oldest-first we need station_id paging instead
             log.warning("demand_history.oldest_first", extra={"event": "demand_history.order"})
-        return [r for r in rows if r["tick"] > since_tick]
+        return [r for r in rows if r.get("tick", -1) > since_tick]

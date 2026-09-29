@@ -147,9 +147,10 @@ class Orchestrator:
             (reasons if self.router["source"] == "rules" else doubts).append(f"router flags review ({self.router['regime']})")
         (reasons if self.budget else notes).extend(doubts)
         for s in shipments:
-            inv = snap["depots"][s["source_depot_id"]]["inventory"][s["fuel_type"]]
-            if s["quantity"] > config.GATE_MAX_DEPOT_SHARE * inv:
-                reasons.append(f"{s['quantity']:.0f} L is >{config.GATE_MAX_DEPOT_SHARE:.0%} of {s['source_depot_id']} {s['fuel_type']}")
+            depot = snap["depots"].get(s.get("source_depot_id"))
+            inv = depot["inventory"].get(s.get("fuel_type"), 0.0) if depot else 0.0
+            if inv <= 0 or s["quantity"] > config.GATE_MAX_DEPOT_SHARE * inv:
+                reasons.append(f"{s['quantity']:.0f} L is >{config.GATE_MAX_DEPOT_SHARE:.0%} of {s.get('source_depot_id')} {s.get('fuel_type')}")
                 break
         return {"auto": not (hard or reasons), "hard": bool(hard), "reasons": hard + reasons, "notes": notes,
                 "review_window_ticks": None if hard else config.REVIEW_WINDOW_TICKS}
@@ -248,6 +249,8 @@ class Orchestrator:
             snap = await self.store.refresh()
         except SimError:
             pass  # check against cached state; the simulator re-validates anyway
+        if not snap:
+            raise ValueError("no simulator state available to validate approval")
         valid, rejected = check(d["shipments"], snap)
         d["shipments"], d["dropped_on_approve"] = valid, rejected
         return await self.execute(d, actor)
@@ -262,6 +265,8 @@ class Orchestrator:
         d = self.audit.get(did)
         if not d or d["status"] != "PENDING_APPROVAL":
             raise ValueError("decision is not pending approval")
+        if not self.store.snap:
+            return None, [{"code": "NO_STATE", "message": "no simulator state available"}]
         valid, rejected = check(shipments, self.store.snap)
         if rejected:
             return None, rejected
@@ -273,6 +278,8 @@ class Orchestrator:
     async def manual(self, shipments, actor="operator"):
         """Operator-authored plan (override). Constraint-checked, then executed."""
         snap = self.store.snap
+        if not snap:
+            return None, [{"code": "NO_STATE", "message": "no simulator state available"}]
         valid, rejected = check(shipments, snap)
         if rejected:
             return None, rejected
@@ -374,9 +381,12 @@ class Orchestrator:
             if soft and not self.store.degraded and age >= config.REVIEW_WINDOW_TICKS:
                 valid, rejected = check(d["shipments"], snap)
                 d["shipments"], d["dropped_on_approve"] = valid, rejected
-                d["note"] = f"no operator action within {config.REVIEW_WINDOW_TICKS}-tick review window"
-                M.FALLBACKS.labels("review_window_auto_execute").inc()
-                await self.execute(d, "auto-after-review-window")
+                if valid:
+                    d["note"] = f"no operator action within {config.REVIEW_WINDOW_TICKS}-tick review window"
+                    M.FALLBACKS.labels("review_window_auto_execute").inc()
+                    await self.execute(d, "auto-after-review-window")
+                else:
+                    self._set_status(d, "EXPIRED", f"all shipments became invalid before {config.REVIEW_WINDOW_TICKS}-tick review window expired")
             elif age > config.PLAN_TTL_TICKS:
                 self._set_status(d, "EXPIRED", f"not approved within {config.PLAN_TTL_TICKS} ticks")
 

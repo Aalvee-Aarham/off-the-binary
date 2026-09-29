@@ -85,6 +85,8 @@ def _error_code(resp):
         body = resp.json()
     except ValueError:
         return f"HTTP_{resp.status_code}", resp.text[:200]
+    if isinstance(body, dict) and "code" in body and isinstance(body.get("code"), str):
+        return body["code"], str(body.get("message", ""))
     err = (body.get("error") or body.get("detail")) if isinstance(body, dict) else None
     if isinstance(err, dict):
         return err.get("code", f"HTTP_{resp.status_code}"), err.get("message", "")
