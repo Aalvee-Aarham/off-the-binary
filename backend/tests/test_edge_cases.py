@@ -128,3 +128,27 @@ def test_metrics_model_validation_tolerance():
         allocation_liters=5000.0, allocation_failures=0
     )
     assert m.service_level == 1.0005
+
+
+def test_allocation_matrix_explains_ppo_split():
+    from app.policy import load_active
+    from app.solvers import allocation_matrix
+    snap = Twin(baseline_world()).snapshot()
+    fc = Forecaster()
+    paths = fc.paths(snap, config.HORIZON_TICKS)
+    arr = arrivals(snap, config.HORIZON_TICKS)
+    r = risks(snap, fc, paths, arr, config.HORIZON_TICKS)
+    policy, _ = load_active()
+    for pol in (None, policy):
+        m = allocation_matrix(snap, fc, paths, arr, r, pol)
+        assert len(m["depots"]) == len(snap["depots"]) * 3
+        for g in m["depots"]:
+            routes = [x for x in snap["routes"].values() if x["source_depot_id"] == g["depot_id"]]
+            assert {x["route_id"] for x in g["rows"]} == {x["id"] for x in routes}
+            assert sum(x["ppo_liters"] for x in g["rows"]) <= g["depot_inventory"]
+            for x in g["rows"]:
+                assert x["need"] >= 0
+                if pol is None:
+                    assert x["priority"] is None and x["ppo_liters"] == 0
+                else:
+                    assert 1 <= x["priority"] <= 5 and 0 <= x["safety"] <= 2

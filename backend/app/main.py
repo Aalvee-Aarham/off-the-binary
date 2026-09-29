@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from . import config
 from . import metrics as M
+from . import solvers
 from . import sse
 from .audit import Audit
 from .llm_pool import SYSTEM, LLMPool, LLMUnavailable
@@ -224,6 +225,15 @@ def create_app(transport=None, start_loops=True, model_transport=None, llm_trans
         view_or_503(o)
         return {f"{s}/{f}": {"p50": [round(x, 1) for x in p.tolist()], "risk": o.risks[(s, f)]}
                 for (s, f), p in o.paths.items() if station_id in (None, s)}
+
+    @app.get("/api/allocation-matrix")
+    async def allocation_matrix(request: Request):
+        """How the RL policy would split each depot's fuel between the stations it can reach, on the current state."""
+        o = orch(request)
+        view_or_503(o)
+        if o.paths is None or o.risks is None:
+            o._analyze(o.store.snap)
+        return solvers.allocation_matrix(o.store.snap, o.fc, o.paths, o.arr, o.risks, o.policy)
 
     @app.get("/api/alerts")
     async def alerts(request: Request, limit: int = Query(100, ge=1, le=1000)):

@@ -956,6 +956,17 @@ footer {
   align-items: center;
   margin-top: auto;
 }
+
+/* RL & Simulation tab */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); font-weight: 700; }
+.stat .v { font-family: var(--font-mono); font-size: 17px; font-weight: 700; color: #fff; margin-top: 4px; }
+.stat .s { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: 190px; display: block; }
+.chart-tip { position: absolute; pointer-events: none; background: #0b1220; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font: 11px var(--font-mono); color: #fff; white-space: nowrap; display: none; }
+.hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -998,7 +1009,7 @@ footer {
     <button class="btn" data-sim="step" title="Advance simulator by 1 tick">Step ⏭️</button>
     <button class="btn btn-success" data-sim="run" id="btn-sim-run" title="Start real-time simulation">Run ▶️</button>
     <button class="btn btn-danger" data-sim="pause" id="btn-sim-pause" title="Pause simulation">Pause ⏸️</button>
-    <button class="btn btn-primary" id="btn-decide-now" title="Trigger 6-Way Tournament &amp; Re-plan">⚡ Decide Now</button>
+    <button class="btn btn-primary" id="btn-decide-now" title="Run the solver tournament now and re-plan shipments">⚡ Decide Now</button>
     <button class="btn btn-icon" id="btn-settings" title="Admin Configuration">⚙️</button>
   </div>
 </header>
@@ -1006,24 +1017,30 @@ footer {
 <!-- Navigation Tabs -->
 <div class="nav-bar">
   <div class="nav-tab active" data-tab="overview">
-    <span>🌐 Operations Center</span>
+    <span>🌐 Overview</span>
   </div>
   <div class="nav-tab" data-tab="inventory">
-    <span>⛽ Depots &amp; Stations Matrix</span>
+    <span>⛽ Depots &amp; Stations</span>
     <span class="badge" id="station-count-badge">4</span>
   </div>
   <div class="nav-tab" data-tab="decisions">
-    <span>⚖️ Decision &amp; Audit Trail</span>
+    <span>⚖️ Decisions</span>
     <span class="badge" id="pending-count-badge" style="background:#f59e0b; color:#000;">0</span>
   </div>
   <div class="nav-tab" data-tab="router">
-    <span>🧠 System-One AI Router</span>
+    <span>🧠 AI Router</span>
+  </div>
+  <div class="nav-tab" data-tab="distribution">
+    <span>🔀 Fuel Distribution</span>
+  </div>
+  <div class="nav-tab" data-tab="learning">
+    <span>🎓 RL &amp; Simulation</span>
   </div>
   <div class="nav-tab" data-tab="copilot">
-    <span>🤖 Operations Copilot</span>
+    <span>🤖 Copilot</span>
   </div>
   <div class="nav-tab" data-tab="chaos">
-    <span>🧪 Chaos &amp; Resilience Lab</span>
+    <span>🧪 Chaos Lab</span>
   </div>
 </div>
 
@@ -1050,10 +1067,10 @@ footer {
           <span>🏭 3. Depot Bottleneck (Patiya)</span>
         </button>
         <button class="demo-scenario-btn" onclick="runDemoScenario('tournament')">
-          <span>🏆 4. 6-Way Tournament Battle</span>
+          <span>🏆 4. Run Solver Tournament</span>
         </button>
         <button class="demo-scenario-btn" style="border-color:rgba(244,63,94,0.4);" onclick="clearAllChaos()">
-          <span>🔄 Reset Faults</span>
+          <span>🔄 Clear Faults</span>
         </button>
       </div>
     </div>
@@ -1065,28 +1082,28 @@ footer {
           <span>Service Level (SLA &gt;95%)</span>
           <span class="dot ok" id="sla-dot"></span>
         </div>
-        <div class="kpi-val" id="kpi-service-level">100.00%</div>
-        <div class="kpi-sub"><span class="dot ok"></span> Target Met &middot; Optimal Fulfill</div>
+        <div class="kpi-val" id="kpi-service-level">–</div>
+        <div class="kpi-sub" id="kpi-service-sub">Waiting for data…</div>
       </div>
       <div class="kpi-card" id="kpi-card-unmet">
-        <div class="kpi-label">Unmet vs Total Demand</div>
-        <div class="kpi-val" id="kpi-unmet">0 L</div>
-        <div class="kpi-sub">Delivered: <span id="kpi-served" style="color:#38bdf8; font-weight:700;">0 L</span></div>
+        <div class="kpi-label">Unmet Demand (total)</div>
+        <div class="kpi-val" id="kpi-unmet">–</div>
+        <div class="kpi-sub">Delivered: <span id="kpi-served" style="color:#38bdf8; font-weight:700;">–</span></div>
       </div>
       <div class="kpi-card" id="kpi-card-risk">
-        <div class="kpi-label">Stations At Stockout Risk</div>
-        <div class="kpi-val" id="kpi-at-risk">0</div>
+        <div class="kpi-label" title="Stations with at least one fuel at 50%+ chance of running out in the next 4 hours">Stations At Stockout Risk</div>
+        <div class="kpi-val" id="kpi-at-risk">–</div>
         <div class="kpi-sub" id="kpi-risk-sub">Forecast MAPE: <span id="kpi-mape" style="color:#fff; font-weight:700;">–</span></div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Operating Regime &amp; Router</div>
-        <div class="kpi-val" id="kpi-regime" style="font-size: 22px; color:#38bdf8;">NORMAL</div>
-        <div class="kpi-sub">Active Solver: <span id="kpi-algo" style="color:#c084fc; font-weight:700;">MPC</span></div>
+        <div class="kpi-val" id="kpi-regime" style="font-size: 22px; color:#38bdf8;">–</div>
+        <div class="kpi-sub">Active Solver: <span id="kpi-algo" style="color:#c084fc; font-weight:700;">–</span></div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Digital Twin &amp; LLM Keys</div>
-        <div class="kpi-val" id="kpi-health" style="color:#10b981;">HEALTHY</div>
-        <div class="kpi-sub"><span id="kpi-llm-count" style="color:#fff;">Pool active</span></div>
+        <div class="kpi-label">System Health &amp; LLM Keys</div>
+        <div class="kpi-val" id="kpi-health">–</div>
+        <div class="kpi-sub"><span id="kpi-llm-count" style="color:#fff;">–</span></div>
       </div>
     </div>
 
@@ -1188,7 +1205,7 @@ footer {
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
-              6-Way Digital Twin Solver Tournament
+              Latest Solver Tournament (Digital Twin)
             </div>
             <span style="font-size:11px; color:#38bdf8; font-weight:700;" id="tournament-winner-badge">Auto-Evaluated</span>
           </div>
@@ -1197,7 +1214,7 @@ footer {
               <thead>
                 <tr>
                   <th>Algorithm</th>
-                  <th>Robust Score</th>
+                  <th title="Simulated cost of the plan on the digital twin. Lower is better.">Score (lower = better)</th>
                   <th>Solve Time</th>
                   <th>Outcome</th>
                 </tr>
@@ -1327,21 +1344,141 @@ footer {
         </div>
       </div>
 
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB: FUEL DISTRIBUTION (RL) ==================== -->
+  <div class="tab-content" id="tab-distribution">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">How the RL Policy Splits Each Depot's Fuel</div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <span class="hint" id="dist-meta" style="margin-right:8px;">–</span>
+          <button class="canvas-filter-chip active" data-fuel="DIESEL" onclick="setDistFuel('DIESEL')">Diesel</button>
+          <button class="canvas-filter-chip" data-fuel="PETROL" onclick="setDistFuel('PETROL')">Petrol</button>
+          <button class="canvas-filter-chip" data-fuel="OCTANE" onclick="setDistFuel('OCTANE')">Octane</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <p class="hint">Every tick the PPO policy reads each station's stock, 4-hour demand forecast, incoming deliveries, stockout risk, demand spikes and route status.
+          For every station and fuel it outputs a <b>priority</b> (1–5, how costly a shortfall there is) and a <b>safety margin</b> (extra buffer on top of forecast demand).
+          The <b>need</b> is the litres required to cover the next hours with that margin. A linear program then sends each depot's fuel to the reachable stations,
+          serving higher-priority stations first, within route, truck and dispatch limits. Recomputed live on the current state.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="border-color: rgba(52, 211, 153, 0.35);">
+      <div class="panel-header" style="background: rgba(52, 211, 153, 0.05);">
+        <div class="panel-title" style="color:#34d399;">Recommended Shipments · best plan right now</div>
+        <span class="hint" id="rec-meta">–</span>
+      </div>
+      <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+        <p class="hint">Every solver (all 7 including PPO; fewer in budget mode when the system is under load) plans on the current state; each plan is simulated on the digital twin under low, expected and high demand, and the best score wins.
+          This is the plan the system recommends. Nothing is shipped from this view: it runs when the decision cycle executes it, or when you press ⚡ Decide Now.</p>
+        <div class="stat-grid" id="rec-stats"></div>
+        <table class="data-table" id="rec-matrix"></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">Priority Matrix · stations × fuels</div><span class="hint">darker = higher PPO priority</span></div>
+      <div class="panel-body no-pad"><table class="data-table" id="prio-matrix"></table></div>
+    </div>
+
+    <div id="dist-depots" style="display:flex; flex-direction:column; gap:20px;"></div>
+  </div>
+
+  <!-- ==================== TAB: RL & SIMULATION ==================== -->
+  <div class="tab-content" id="tab-learning">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Live Simulation Metrics</div>
+        <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);" id="sim-meta">–</span>
+      </div>
+      <div class="panel-body">
+        <div class="stat-grid" id="sim-stats"></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Service Level (%)</div><span class="hint">since this page opened</span></div>
+        <div class="panel-body"><div class="chart-wrap" id="chart-service"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Unmet Demand per Tick (L)</div><span class="hint">since this page opened</span></div>
+        <div class="panel-body"><div class="chart-wrap" id="chart-unmet"></div></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Depot Supply Outlook</div></div>
+        <div class="panel-body no-pad" style="max-height:300px; overflow-y:auto;">
+          <table class="data-table">
+            <thead><tr><th>Depot</th><th>Fuel</th><th>Stock</th><th>Scheduled</th><th>Next Supply</th><th>Days of Cover</th></tr></thead>
+            <tbody id="outlook-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Scenario Events</div><span class="badge" id="events-count">0</span></div>
+        <div class="panel-body no-pad" style="max-height:300px; overflow-y:auto;">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>Status</th><th>Ticks</th><th>Parameters</th></tr></thead>
+            <tbody id="events-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">Bandit Online Learning (Thompson Sampling Posteriors)</div>
+          <div class="panel-title">PPO Policy (Reinforcement Learning)</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span class="badge" id="ppo-active">–</span>
+            <button class="btn" onclick="rollbackPPO()" title="Switch back to the previously active PPO version">↩ Rollback</button>
+          </div>
         </div>
-        <div class="panel-body no-pad">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Regime / Arm</th>
-                <th>Win Rate Posterior</th>
-                <th>Samples (n)</th>
-              </tr>
-            </thead>
-            <tbody id="bandit-table-body"></tbody>
-          </table>
+        <div class="panel-body" style="display:flex; flex-direction:column; gap:14px;">
+          <p class="hint">PPO is a learned dispatch policy. It is one candidate in every solver tournament and only wins when the digital twin scores its plan best. Each version is evaluated offline against the other solvers before it can be promoted.</p>
+          <div>
+            <div class="kpi-label" style="display:block; margin-bottom:6px;">Offline evaluation · mean unmet demand per run (L, lower is better) · <span id="ppo-eval-version">–</span></div>
+            <div class="chart-wrap" id="chart-ppo"></div>
+          </div>
+          <div>
+            <div class="kpi-label" style="display:block; margin-bottom:6px;">Service level by scenario (<span id="ppo-regime-version">–</span>)</div>
+            <table class="data-table"><thead id="ppo-regime-head"></thead><tbody id="ppo-regime-body"></tbody></table>
+          </div>
+          <div>
+            <div class="kpi-label" style="display:block; margin-bottom:6px;">Model versions</div>
+            <table class="data-table">
+              <thead><tr><th>Version</th><th>Eval</th><th>PPO unmet</th><th>Best baseline</th><th>Gate</th><th></th></tr></thead>
+              <tbody id="ppo-versions-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">PPO in Live Tournaments</div><span class="hint">last 30 decisions</span></div>
+          <div class="panel-body"><div class="stat-grid" id="ppo-live"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Bandit Online Learning</div>
+            <span class="hint" title="Thompson sampling: each regime/solver pair keeps a win-rate estimate that updates after every tournament">per regime / solver</span>
+          </div>
+          <div class="panel-body no-pad" style="max-height:360px; overflow-y:auto;">
+            <table class="data-table">
+              <thead><tr><th>Regime / Solver</th><th>Win Rate</th><th>Samples (n)</th></tr></thead>
+              <tbody id="bandit-table-body"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -1425,7 +1562,7 @@ footer {
 
           <div class="chaos-card">
             <h4>Depot Bottleneck <span class="badge" style="background:rgba(56,189,248,0.2); color:#38bdf8;">Patiya Depot</span></h4>
-            <p style="color:var(--text-muted); font-size:12px;">Constrains Patiya depot dispatch capacity by 50% for 35 ticks.</p>
+            <p style="color:var(--text-muted); font-size:12px;">Marks Patiya depot as constrained for 35 ticks.</p>
             <button class="btn btn-primary" onclick="injectEvent('depot_constraint', {depot_ids: ['depot-patiya']}, 35)">Constrain Depot</button>
           </div>
 
@@ -1529,14 +1666,16 @@ function showToast(title, msg, type = "info") {
 }
 
 // Persistence
-try { $("admin-token").value = localStorage.getItem("admin_tok") || "9cjFb5XmI-0TMChYamWb1rSUq0pRHw34"; } catch {}
+try { $("admin-token").value = localStorage.getItem("admin_tok") || ""; } catch {}
 $("admin-token").onchange = e => { try { localStorage.setItem("admin_tok", e.target.value); } catch {} };
 
-function openSettingsModal() { $("settings-modal").classList.add("open"); }
+function openSettingsModal() { $("settings-modal").classList.add("open"); $("admin-token").focus(); }
 function closeSettingsModal() { $("settings-modal").classList.remove("open"); }
 $("btn-settings").onclick = openSettingsModal;
 
 function closeInspectorModal() { $("inspector-modal").classList.remove("open"); }
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeSettingsModal(); closeInspectorModal(); } });
+document.querySelectorAll(".modal-overlay").forEach(m => m.addEventListener("click", e => { if (e.target === m) m.classList.remove("open"); }));
 
 // API Fetch Helper
 async function api(path, opts = {}) {
@@ -1551,7 +1690,12 @@ async function api(path, opts = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.detail?.message || JSON.stringify(data.detail || data));
+    if (res.status === 401 || res.status === 403) {
+      openSettingsModal();
+      throw new Error("Admin token missing or wrong. Enter it in Settings (⚙️) and try again.");
+    }
+    const d = data.detail;
+    throw new Error(typeof d === "string" ? d : d?.message || JSON.stringify(d || data));
   }
   return data;
 }
@@ -1564,11 +1708,15 @@ document.querySelectorAll(".nav-tab").forEach(tab => {
     tab.classList.add("active");
     const target = $(`tab-${tab.dataset.tab}`);
     if (target) target.classList.add("active");
+    if (tab.dataset.tab === "overview") resizeCanvas();
+    if (tab.dataset.tab === "learning" || tab.dataset.tab === "distribution") refresh();
+    history.replaceState(null, "", `#${tab.dataset.tab}`);
   };
 });
 
 // Simulator Control Buttons
 async function simControl(action) {
+  if (action === "reset" && !confirm("Reset the simulator to tick 0? Inventories, events and history in the simulator start over.")) return;
   try {
     await api(`/api/sim/${action}`, { method: "POST" });
     showToast("Simulator Action", `Executed ${action.toUpperCase()}`, "success");
@@ -1596,9 +1744,10 @@ $("btn-decide-now").onclick = triggerImmediateDecision;
 
 async function triggerImmediateDecision() {
   try {
-    showToast("Decision Engine", "Triggering 6-Way Tournament & Re-planning...", "info");
+    showToast("Decision Engine", "Running solver tournament...", "info");
     const res = await api("/api/decisions/run", { method: "POST" });
-    showToast("Tournament Complete", `Winner: ${(res?.algorithm || 'MPC').toUpperCase()}`, "success");
+    if (!res?.algorithm) showToast("No Decision", res?.status || "Nothing to decide right now.", "warn");
+    else showToast("Tournament Complete", `Winner: ${res.algorithm.toUpperCase()} · ${(res.shipments || []).length} shipments · ${res.status.replace(/_/g, " ")}`, res.status === "PENDING_APPROVAL" ? "warn" : "success");
     await refresh();
   } catch (e) {
     showToast("Decision Error", e.message, "bad");
@@ -1625,7 +1774,7 @@ window.runDemoScenario = async (scenario) => {
         method: "POST",
         body: JSON.stringify({ type: "depot_constraint", parameters: { depot_ids: ["depot-patiya"] }, duration_ticks: 35 })
       });
-      showToast("🏭 Depot Bottleneck", "Patiya dispatch capacity limited 50%! Load balancer compensating.", "warn");
+      showToast("🏭 Depot Bottleneck", "Patiya depot constrained for 35 ticks. Watch the planner shift supply to Gazipur.", "warn");
     } else if (scenario === 'tournament') {
       await triggerImmediateDecision();
     }
@@ -1657,6 +1806,7 @@ window.rejectDecision = async (id) => {
 };
 
 window.updateShipmentQty = async (did, idx, qty) => {
+  if (!(parseFloat(qty) >= 0)) return showToast("Edit Failed", "Quantity must be a number of litres, 0 or more.", "bad");
   try {
     const d = await api(`/api/decisions/${did}`);
     d.shipments[idx].quantity = parseFloat(qty);
@@ -1698,7 +1848,7 @@ window.injectFault = async (type, parameters, duration_seconds) => {
 window.clearAllChaos = async () => {
   try {
     await api("/api/chaos/clear", { method: "POST" });
-    showToast("Chaos Cleared", "All injected disruptions and faults cleared.", "success");
+    showToast("Faults Cleared", "Simulator faults cleared. Scenario events end when their duration runs out.", "success");
     await refresh();
   } catch (e) {
     showToast("Clear Failed", e.message, "bad");
@@ -1751,7 +1901,7 @@ async function handleCopilotMessage() {
 // Canvas Filter
 window.setCanvasFilter = (f) => {
   canvasFilter = f;
-  document.querySelectorAll(".canvas-filter-chip").forEach(b => {
+  document.querySelectorAll(".canvas-filter-chip[data-filter]").forEach(b => {
     b.classList.toggle("active", b.dataset.filter === f);
   });
 };
@@ -1959,8 +2109,9 @@ function drawTopology() {
   Object.entries(NODE_POSITIONS).forEach(([id, pos]) => {
     const nx = pos.x * w, ny = pos.y * h;
     const isDepot = pos.type === "depot";
-    const risk = (state.risks || []).find(r => r.station_id === id);
-    const isRisk = risk && risk.p_stockout >= 0.5;
+    const isRisk = (state.risks || []).some(r => r.station_id === id && r.p_stockout >= 0.5);
+    const node = ((isDepot ? state.depots : state.stations) || []).find(n => n.id === id);
+    const status = node?.status || "OPEN";
 
     // Danger halo if at stockout risk
     if (isRisk) {
@@ -1975,7 +2126,7 @@ function drawTopology() {
     // Node Outer Ring
     ctx.beginPath();
     ctx.arc(nx, ny, isDepot ? 15 : 11, 0, Math.PI * 2);
-    ctx.fillStyle = isDepot ? "#0284c7" : isRisk ? "#f43f5e" : "#10b981";
+    ctx.fillStyle = status !== "OPEN" ? "#f59e0b" : isDepot ? "#0284c7" : isRisk ? "#f43f5e" : "#10b981";
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 14;
     ctx.fill();
@@ -1994,16 +2145,305 @@ function drawTopology() {
     ctx.fillText(pos.name, nx, ny + (isDepot ? 28 : 24));
 
     ctx.font = "bold 9px 'JetBrains Mono'";
-    ctx.fillStyle = isRisk ? "#fb7185" : "rgba(255,255,255,0.65)";
-    ctx.fillText(isDepot ? "MAIN DEPOT" : isRisk ? "⚠️ STOCKOUT RISK" : "ONLINE", nx, ny + (isDepot ? 40 : 36));
+    ctx.fillStyle = status !== "OPEN" ? "#fbbf24" : isRisk ? "#fb7185" : "rgba(255,255,255,0.65)";
+    ctx.fillText(status !== "OPEN" ? `⚠️ ${status}` : isDepot ? "MAIN DEPOT" : isRisk ? "⚠️ STOCKOUT RISK" : "ONLINE", nx, ny + (isDepot ? 40 : 36));
   });
 
   requestAnimationFrame(drawTopology);
 }
 requestAnimationFrame(drawTopology);
 
+// --- Fuel Distribution tab ---
+let distFuel = "DIESEL", lastMatrix = null, lastRec = null, lastRecTick = -1;
+
+function renderRecommendation(rec, stations) {
+  if (!rec) { $("rec-meta").textContent = "no recommendation (simulator unreachable or all solvers failed)"; return; }
+  const ships = rec.shipments || [], total = ships.reduce((s, x) => s + x.quantity, 0);
+  const wa = rec.expected?.without_action || {}, wp = rec.expected?.with_plan || {};
+  const win = (rec.candidates || []).find(c => c.algorithm === rec.algorithm) || {};
+  const ppo = (rec.candidates || []).find(c => c.algorithm === "ppo");
+  $("rec-meta").textContent = `tick ${rec.tick} · ${(rec.candidates || []).length} solvers${rec.budget_mode ? " (budget mode: system under load)" : ""} · winner ${rec.algorithm.toUpperCase()}${rec.best_algorithm !== rec.algorithm ? ` (best score: ${rec.best_algorithm.toUpperCase()}, router pick kept on a near-tie)` : ""}`;
+  const stat = (k, v, s = "") => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  $("rec-stats").innerHTML = [
+    stat("Ship now", `${fmt(total)} L`, `${ships.length} truckloads`),
+    stat("Unmet demand (forecast)", wa.unmet != null ? `${fmt(wa.unmet)} → ${fmt(wp.unmet)} L` : "–", "without action → with this plan"),
+    stat("Stations running dry", wa.stockouts != null ? `${wa.stockouts} → ${wp.stockouts}` : "–", "station-fuel stockouts in the horizon"),
+    stat("Winning score", win.score != null ? fmt(win.score) : "–", "lower is better"),
+    stat("PPO's plan", ppo?.score != null ? fmt(ppo.score) : "–", ppo?.score != null && win.score != null ? `${ppo.score <= win.score ? "ties the winner" : `${fmt(ppo.score - win.score)} worse than the winner`}` : rec.budget_mode ? "skipped: budget mode runs fewer solvers" : "no PPO model loaded"),
+  ].join("");
+  if (!ships.length) {
+    $("rec-matrix").innerHTML = `<tbody><tr><td style="text-align:center; padding:16px; color:var(--text-muted);">No shipments recommended this tick: ${(rec.gate?.reasons || []).length ? esc(rec.gate.reasons.join("; ")) : "stations are covered, or the depots have nothing to send."}</td></tr></tbody>`;
+    return;
+  }
+  const cell = {};
+  ships.forEach(s => {
+    const k = `${s.destination_station_id}|${s.fuel_type}`;
+    cell[k] = cell[k] || { q: 0, from: new Set() };
+    cell[k].q += s.quantity; cell[k].from.add(s.source_depot_id.replace("depot-", ""));
+  });
+  const fuels = ["DIESEL", "PETROL", "OCTANE"];
+  $("rec-matrix").innerHTML = `<thead><tr><th>Station</th>${fuels.map(f => `<th>${f}</th>`).join("")}<th>Total</th></tr></thead><tbody>${stations.map(([sid, name]) => {
+    const row = fuels.map(f => cell[`${sid}|${f}`]), sum = row.reduce((s, c) => s + (c?.q || 0), 0);
+    return `<tr><td style="font-weight:700; color:#fff;">${esc(name)}</td>${row.map(c => c
+      ? `<td style="font-family:var(--font-mono);"><b style="color:#34d399;">${fmt(c.q)} L</b> <span style="color:var(--text-muted); font-size:11px;">from ${esc([...c.from].join(" + "))}</span></td>`
+      : `<td style="font-family:var(--font-mono); color:var(--text-muted);">–</td>`).join("")}
+      <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${sum ? fmt(sum) + " L" : "–"}</td></tr>`;
+  }).join("")}</tbody>`;
+}
+window.setDistFuel = f => {
+  distFuel = f;
+  document.querySelectorAll("[data-fuel]").forEach(b => b.classList.toggle("active", b.dataset.fuel === f));
+  if (lastMatrix) renderDistribution(lastMatrix, cachedDecisions);
+};
+
+function renderDistribution(m, decisions) {
+  lastMatrix = m;
+  const byKey = {};
+  m.depots.forEach(g => g.rows.forEach(r => { byKey[`${r.station_id}|${g.fuel}`] = r; }));
+  const stations = [...new Map(m.depots.flatMap(g => g.rows).map(r => [r.station_id, r.station_name])).entries()];
+  $("dist-meta").textContent = `tick ${m.tick} · ${m.policy ? "PPO policy active" : "no PPO model loaded (neutral priorities)"}`;
+  renderRecommendation(lastRec, stations);
+  const recSent = {};
+  (lastRec?.shipments || []).forEach(s => { const k = `${s.route_id}|${s.fuel_type}`; recSent[k] = (recSent[k] || 0) + s.quantity; });
+  const recOf = (r, f) => recSent[`${r.route_id}|${f}`] || 0;
+
+  const fuels = ["DIESEL", "PETROL", "OCTANE"];
+  $("prio-matrix").innerHTML = `<thead><tr><th>Station</th>${fuels.map(f => `<th>${f}</th>`).join("")}</tr></thead><tbody>${stations.map(([sid, name]) => `
+    <tr><td style="font-weight:700; color:#fff;">${esc(name)}</td>${fuels.map(f => {
+      const r = byKey[`${sid}|${f}`];
+      if (!r) return "<td>–</td>";
+      const t = r.priority != null ? (r.priority - 1) / 4 : 0.5;
+      return `<td style="background:rgba(56,189,248,${(0.06 + 0.5 * t).toFixed(2)}); font-family:var(--font-mono);" title="p(stockout) ${(r.p_stockout * 100).toFixed(0)}% · safety ${r.safety ?? "–"}">
+        <b style="color:#fff;">${r.priority != null ? r.priority.toFixed(2) : "–"}</b> <span style="color:var(--text-secondary);">· need ${fmt(r.need)} L</span></td>`;
+    }).join("")}</tr>`).join("")}</tbody>`;
+
+  const last = decisions.find(d => (d.shipments || []).length && ["EXECUTED", "COMPLETED", "COMPLETED_PARTIAL", "PARTIAL"].includes(d.status));
+  const lastSent = {};
+  (last?.shipments || []).forEach(s => { const k = `${s.route_id}|${s.fuel_type}`; lastSent[k] = (lastSent[k] || 0) + s.quantity; });
+
+  $("dist-depots").innerHTML = m.depots.filter(g => g.fuel === distFuel).map(g => {
+    const rows = [...g.rows].sort((a, b) => (b.usable - a.usable) || (recOf(b, g.fuel) - recOf(a, g.fuel)) || (b.ppo_liters - a.ppo_liters)
+      || ((b.need > 0) - (a.need > 0)) || ((b.priority ?? 0) - (a.priority ?? 0)) || (b.need - a.need));
+    const total = rows.reduce((s, r) => s + r.ppo_liters, 0);
+    const recTotal = rows.reduce((s, r) => s + recOf(r, g.fuel), 0);
+    const note = g.depot_status !== "OPEN" && g.depot_status !== "CONSTRAINED" ? `Depot is ${esc(g.depot_status)}: it cannot dispatch.`
+      : g.depot_inventory < 500 ? `Depot has ${fmt(g.depot_inventory)} L, below the 500 L minimum shipment, so nothing is sent now. The ranking shows who is served first when fuel arrives.`
+      : total === 0 && recTotal === 0 ? "Nothing to send from this depot this tick: the stations it reaches are covered, or another depot serves them faster." : "";
+    return `<div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">🏭 ${esc(g.depot_name)} · ${g.fuel}</div>
+        <div style="display:flex; gap:14px; font-size:12px; font-family:var(--font-mono);">
+          <span>stock <b style="color:#fff;">${fmt(g.depot_inventory)} L</b></span>
+          <span>dispatch left <b style="color:#fff;">${fmt(g.dispatch_left)} L/tick</b></span>
+          <span>recommended <b style="color:#34d399;">${fmt(recTotal)} L</b></span>
+          <span>PPO sends <b style="color:#38bdf8;">${fmt(total)} L</b></span>
+          <span class="status-tag ${g.depot_status === "OPEN" ? "tag-open" : "tag-constrained"}">${esc(g.depot_status)}</span>
+        </div>
+      </div>
+      ${note ? `<div class="hint" style="padding:10px 20px 0; color:#fbbf24;">${note}</div>` : ""}
+      <div class="panel-body no-pad" style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Rank</th><th>Station</th><th>Route</th><th>Stock / Cap</th><th>4h Demand</th><th>Incoming</th><th>Stockout</th><th>P(stockout)</th>
+            <th title="Litres needed to cover the next hours with PPO's safety margin">Need</th><th title="PPO shortfall weight, 1 (low) to 5 (high)">PPO Priority</th><th title="Extra buffer, in forecast standard deviations">Safety</th>
+            <th title="Litres the best plan (tournament winner) would ship on this route now">Recommended</th>
+            <th title="Litres PPO's own plan would ship">PPO Sends</th><th title="Litres the last executed plan sent on this route">Last Executed</th></tr></thead>
+          <tbody>${rows.map((r, i) => {
+            const share = total ? r.ppo_liters / total : 0, pct = r.priority != null ? (r.priority - 1) / 4 * 100 : 0;
+            const rec = recOf(r, g.fuel);
+            const first = i === 0 && r.usable && (rec > 0 || r.need > 0 || r.ppo_liters > 0);
+            return `<tr style="${first ? "background:rgba(56,189,248,0.07);" : ""}${r.usable ? "" : "opacity:0.5;"}">
+              <td style="font-weight:700; color:${first ? "#38bdf8" : "#fff"};">${r.usable ? `#${i + 1}` : "–"}${first ? " ▲" : ""}</td>
+              <td style="font-weight:700; color:#fff; cursor:pointer;" onclick="inspectNode('${r.station_id}')">${esc(r.station_name)}</td>
+              <td style="font-size:11px;">${r.transit_ticks} ticks · <span class="status-tag ${r.route_status === "AVAILABLE" ? "tag-open" : "tag-outage"}">${esc(r.route_status)}</span></td>
+              <td style="font-family:var(--font-mono);">${fmt(r.inventory)} / ${fmt(r.capacity)}</td>
+              <td style="font-family:var(--font-mono);">${fmt(r.demand_4h)} L</td>
+              <td style="font-family:var(--font-mono);">${fmt(r.incoming)} L</td>
+              <td style="font-family:var(--font-mono);">${r.hours_to_stockout != null ? r.hours_to_stockout + " h" : "safe"}</td>
+              <td><span class="alert-pill ${r.p_stockout >= 0.8 ? "pill-critical" : r.p_stockout >= 0.5 ? "pill-warning" : "pill-info"}">${(r.p_stockout * 100).toFixed(0)}%</span></td>
+              <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${fmt(r.need)} L</td>
+              <td style="min-width:120px;"><div style="display:flex; align-items:center; gap:6px;">
+                <div class="fuel-bar-wrap" style="flex:1;"><div class="fuel-bar-fill" style="width:${pct}%; background:#38bdf8;"></div></div>
+                <span style="font-family:var(--font-mono); font-size:11px; color:#fff;">${r.priority != null ? r.priority.toFixed(1) : "–"}</span></div></td>
+              <td style="font-family:var(--font-mono);">${r.safety != null ? "+" + r.safety.toFixed(1) + "σ" : "–"}</td>
+              <td style="font-family:var(--font-mono); font-weight:700; color:${rec ? "#34d399" : "var(--text-muted)"};">${fmt(rec)} L</td>
+              <td style="min-width:120px;"><div style="font-family:var(--font-mono); font-weight:700; color:${r.ppo_liters ? "#38bdf8" : "var(--text-muted)"};">${fmt(r.ppo_liters)} L${total ? ` · ${(share * 100).toFixed(0)}%` : ""}</div>
+                ${total ? `<div class="fuel-bar-wrap" style="margin-top:3px;"><div class="fuel-bar-fill" style="width:${share * 100}%; background:#38bdf8;"></div></div>` : ""}</td>
+              <td style="font-family:var(--font-mono);">${fmt(lastSent[`${r.route_id}|${g.fuel}`] || 0)} L</td>
+            </tr>`;
+          }).join("")}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// --- RL & Simulation tab ---
+// ponytail: history lives in the page (resets on reload); add a backend metrics history endpoint if it must persist
+let simHist = [], lastSim = null;
+function recordSimHistory(state) {
+  const m = state.metrics;
+  if (lastSim && state.tick < lastSim.tick) { simHist = []; lastSim = null; }
+  if (lastSim && state.tick === lastSim.tick) return;
+  const unmet = lastSim ? Math.max(0, m.unmet_demand_liters - lastSim.unmet) / (state.tick - lastSim.tick) : null;
+  simHist.push({ tick: state.tick, sl: m.service_level * 100, unmet });
+  if (simHist.length > 400) simHist.shift();
+  lastSim = { tick: state.tick, unmet: m.unmet_demand_liters };
+}
+
+const MONO = `font-family="JetBrains Mono" font-size="10" fill="#64748b"`;
+function lineChart(el, pts, fmtY, color, range) {
+  const W = el.clientWidth, H = 190, L = 52, R = 12, T = 10, B = 22;
+  if (!W || el.matches(":hover")) return;
+  if (pts.length < 2) {
+    el.innerHTML = `<div class="hint" style="height:${H}px; display:flex; align-items:center; justify-content:center;">Collecting data… the chart fills in as the simulator runs.</div>`;
+    return;
+  }
+  const x0 = pts[0].x, x1 = pts[pts.length - 1].x;
+  let [y0, y1] = range || [0, Math.max(...pts.map(p => p.y))];
+  if (y1 <= y0) y1 = y0 + 1;
+  const sx = x => L + (x - x0) / (x1 - x0 || 1) * (W - L - R);
+  const sy = y => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+  const grid = [0, 0.5, 1].map(f => {
+    const v = y0 + f * (y1 - y0);
+    return `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="rgba(255,255,255,0.06)"/><text x="${L - 6}" y="${sy(v) + 3}" text-anchor="end" ${MONO}>${fmtY(v)}</text>`;
+  }).join("");
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}">${grid}
+    <text x="${L}" y="${H - 6}" ${MONO}>tick ${x0}</text><text x="${W - R}" y="${H - 6}" text-anchor="end" ${MONO}>tick ${x1}</text>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line class="xh" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,0.3)" style="display:none"/>
+    <circle class="pt" r="4" fill="${color}" stroke="#0b1220" stroke-width="2" style="display:none"/></svg><div class="chart-tip"></div>`;
+  const svg = el.querySelector("svg"), tip = el.querySelector(".chart-tip"), xh = svg.querySelector(".xh"), pt = svg.querySelector(".pt");
+  svg.onmousemove = e => {
+    const mx = (e.clientX - svg.getBoundingClientRect().left);
+    const p = pts.reduce((a, b) => Math.abs(sx(b.x) - mx) < Math.abs(sx(a.x) - mx) ? b : a);
+    const px = sx(p.x), py = sy(p.y);
+    xh.setAttribute("x1", px); xh.setAttribute("x2", px); pt.setAttribute("cx", px); pt.setAttribute("cy", py);
+    xh.style.display = pt.style.display = ""; tip.style.display = "block";
+    tip.textContent = `tick ${p.x} · ${fmtY(p.y)}`;
+    tip.style.left = Math.min(px + 10, W - 150) + "px"; tip.style.top = Math.max(py - 30, 0) + "px";
+  };
+  svg.onmouseleave = () => { xh.style.display = pt.style.display = tip.style.display = "none"; };
+}
+
+function barChart(el, rows) {
+  const W = el.clientWidth, LW = 170, VW = 70, rowH = 26;
+  if (!W || !rows.length) return;
+  const max = Math.max(...rows.map(r => r.value)) || 1;
+  const H = rows.length * rowH;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="height:${H}px">${rows.map((r, i) => {
+    const w = Math.max(2, (W - LW - VW) * r.value / max), y = i * rowH + 4;
+    return `<g><title>${esc(r.label)}: ${fmt(r.value)} L unmet</title>
+      <text x="${LW - 8}" y="${y + 13}" text-anchor="end" font-size="11" fill="${r.hi ? "#fff" : "#94a3b8"}" font-weight="${r.hi ? 700 : 500}">${esc(r.label)}</text>
+      <rect x="${LW}" y="${y + 2}" width="${w}" height="16" rx="3" fill="${r.hi ? "#38bdf8" : "#475569"}"/>
+      <text x="${LW + w + 6}" y="${y + 14}" font-family="JetBrains Mono" font-size="10" fill="#cbd5e1">${fmt(r.value)}</text></g>`;
+  }).join("")}</svg>`;
+}
+
+const ALGO_LABEL = k => ({ tournament_with_ppo: "Tournament (with PPO)", robust_lp: "Robust LP" }[k] || (k.startsWith("active_") ? `Previous PPO (${k.slice(7)})` : k.toUpperCase()));
+
+function renderLearning(state, decisions, models) {
+  const m = state.metrics, inc = state.incident || {};
+  $("sim-meta").textContent = `scenario ${state.scenario?.id ?? "–"} · seed ${state.scenario?.seed ?? "–"}`;
+  const stat = (k, v, s = "") => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  $("sim-stats").innerHTML = [
+    stat("Sim time", esc(state.sim_time.slice(0, 16).replace("T", " ")), `tick ${state.tick} · ${esc(state.sim_status)}`),
+    stat("Service level", `${(m.service_level * 100).toFixed(2)}%`, "served ÷ total demand"),
+    stat("Served", `${fmt(m.served_demand_liters)} L`),
+    stat("Unmet", `${fmt(m.unmet_demand_liters)} L`),
+    stat("Allocated", `${fmt(m.allocation_liters)} L`, `${m.allocation_failures} failed allocations`),
+    stat("In transit", (state.in_flight || []).length, "shipments on the road"),
+    stat("Regime", esc((state.router?.regime || "–").replace(/_/g, " ")), `solver ${esc(state.router?.algorithm || "–")}`),
+    stat("Incident", inc.active_since_tick != null ? `since tick ${inc.active_since_tick}` : "none",
+      inc.last_recovery ? `last recovery took ${inc.last_recovery.ticks} ticks` : "no recovery recorded yet"),
+  ].join("");
+
+  $("outlook-body").innerHTML = (state.supply_outlook || []).map(o => {
+    const c = o.days_of_cover_incl_schedule, col = c < 1 ? "#fb7185" : c < 3 ? "#fbbf24" : "#34d399";
+    return `<tr><td>${esc(o.depot_id.replace("depot-", ""))}</td><td>${esc(o.fuel)}</td><td style="font-family:var(--font-mono);">${fmt(o.stock)} L</td>
+      <td style="font-family:var(--font-mono);">${fmt(o.scheduled_liters)} L</td><td>${o.next_supply_tick != null ? `tick ${o.next_supply_tick}` : "none scheduled"}</td>
+      <td style="font-family:var(--font-mono); font-weight:700; color:${col};">${c.toFixed(1)} d</td></tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center; padding:18px;">No outlook yet.</td></tr>`;
+
+  const evs = state.events || [];
+  $("events-count").textContent = evs.length;
+  $("events-body").innerHTML = evs.map(e => `<tr><td>${esc(e.type.replace(/_/g, " "))}</td>
+    <td><span class="status-tag ${e.status === "ACTIVE" ? "tag-outage" : "tag-constrained"}">${esc(e.status)}</span></td>
+    <td style="font-family:var(--font-mono);">${e.start_tick}–${e.end_tick}</td>
+    <td style="font-family:var(--font-mono); font-size:11px;">${esc(JSON.stringify(e.parameters || {}))}</td></tr>`).join("")
+    || `<tr><td colspan="4" style="text-align:center; padding:18px; color:var(--text-muted);">No scenario events. Inject one from the Chaos lab or the demo buttons.</td></tr>`;
+
+  // PPO live record from the tournaments in recent decisions
+  const withPpo = decisions.filter(d => (d.candidates || []).some(c => c.algorithm === "ppo"));
+  const ranks = withPpo.map(d => {
+    const ok = d.candidates.filter(c => c.score != null), p = ok.find(c => c.algorithm === "ppo");
+    return p && { rank: 1 + ok.filter(c => c.score < p.score).length, of: ok.length };  // ties share a rank
+  }).filter(Boolean);
+  const avgRank = ranks.length ? (ranks.reduce((s, r) => s + r.rank, 0) / ranks.length).toFixed(1) : "–";
+  $("ppo-live").innerHTML = [
+    stat("Tournaments", withPpo.length, "PPO competed"),
+    stat("Best score", `${withPpo.filter(d => d.best_algorithm === "ppo").length} / ${withPpo.length}`, "PPO plan scored best"),
+    stat("Executed", decisions.filter(d => d.algorithm === "ppo" && d.shipments?.length).length, "PPO plans that ran"),
+    stat("Average rank", avgRank, ranks.length ? `of ${ranks[0].of} solvers` : "no data yet"),
+  ].join("");
+
+  if (!models) return;
+  $("bandit-table-body").innerHTML = Object.entries(models.bandit || {}).sort((a, b) => b[1].win_rate - a[1].win_rate).map(([k, b]) => `
+    <tr><td style="font-family:var(--font-mono); color:#fff;">${esc(k.replace("/", " / "))}</td>
+    <td style="font-family:var(--font-mono); color:#38bdf8; font-weight:700;">${(b.win_rate * 100).toFixed(1)}%</td>
+    <td style="font-family:var(--font-mono);">${b.n}</td></tr>`).join("")
+    || `<tr><td colspan="3" style="text-align:center; padding:18px;">No tournaments yet.</td></tr>`;
+
+  const ppo = models.ppo || {}, versions = ppo.versions || [];
+  $("ppo-active").textContent = ppo.loaded ? `active: ${ppo.active}` : "not loaded";
+  const cur = versions.find(v => v.version === ppo.active) || versions[versions.length - 1];
+  const baselines = ["lp", "mpc", "greedy"];
+  $("ppo-versions-body").innerHTML = versions.map(v => {
+    const r = v.metrics?.results || {}, best = baselines.filter(b => r[b]).sort((a, b) => r[a].mean_unmet_l - r[b].mean_unmet_l)[0];
+    return `<tr><td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${esc(v.version)}</td>
+      <td style="font-size:11px;">${v.metrics?.ticks ?? "–"} ticks × ${v.metrics?.seeds ?? "–"} seeds</td>
+      <td style="font-family:var(--font-mono);">${fmt(r.ppo?.mean_unmet_l)} L</td>
+      <td style="font-family:var(--font-mono);">${best ? `${best.toUpperCase()} ${fmt(r[best].mean_unmet_l)} L` : "–"}</td>
+      <td>${v.metrics?.passes_gate ? '<span class="status-tag tag-open">✓ passed</span>' : '<span class="status-tag tag-outage">✗ failed</span>'}</td>
+      <td>${v.version === ppo.active ? '<span class="status-tag tag-open">ACTIVE</span>' : `<button class="btn" onclick="promotePPO('${esc(v.version)}')">Promote</button>`}</td></tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center; padding:18px;">No PPO versions trained yet.</td></tr>`;
+
+  if (!$("tab-learning").classList.contains("active")) return;
+  lineChart($("chart-service"), simHist.map(p => ({ x: p.tick, y: p.sl })), v => `${v.toFixed(1)}%`, "#34d399", [0, 100]);
+  lineChart($("chart-unmet"), simHist.filter(p => p.unmet != null).map(p => ({ x: p.tick, y: p.unmet })), v => `${fmt(v)} L`, "#fb7185");
+  if (cur) {
+    const res = cur.metrics.results;
+    $("ppo-eval-version").textContent = `${cur.version}, ${cur.metrics.ticks} ticks × ${cur.metrics.seeds} seeds`;
+    barChart($("chart-ppo"), Object.entries(res).filter(([, r]) => r.mean_unmet_l != null)
+      .map(([k, r]) => ({ label: ALGO_LABEL(k), value: r.mean_unmet_l, hi: k === "ppo" }))
+      .sort((a, b) => a.value - b.value));
+    const algos = Object.keys(res).filter(k => !k.startsWith("active_"));
+    const regimes = Object.keys(res.ppo || {}).filter(k => k !== "mean_unmet_l");
+    $("ppo-regime-version").textContent = cur.version;
+    $("ppo-regime-head").innerHTML = `<tr><th>Scenario</th>${algos.map(a => `<th>${esc(ALGO_LABEL(a))}</th>`).join("")}</tr>`;
+    $("ppo-regime-body").innerHTML = regimes.map(g => {
+      const vals = algos.map(a => res[a]?.[g]?.service_level), top = Math.max(...vals.filter(v => v != null));
+      return `<tr><td>${esc(g.replace(/_/g, " "))}</td>${vals.map(v => `<td style="font-family:var(--font-mono); ${v === top ? "color:#34d399; font-weight:700;" : ""}">${v != null ? (v * 100).toFixed(2) + "%" : "–"}</td>`).join("")}</tr>`;
+    }).join("");
+  }
+}
+
+window.promotePPO = async (version) => {
+  if (!confirm(`Make PPO ${version} the active policy? It takes part in tournaments from the next decision.`)) return;
+  try { await api("/api/models/ppo/promote", { method: "POST", body: JSON.stringify({ version }) }); showToast("PPO Promoted", `${version} is now active`, "success"); await refresh(); }
+  catch (e) { showToast("Promote Failed", e.message, "bad"); }
+};
+window.rollbackPPO = async () => {
+  if (!confirm("Roll back to the previously active PPO version?")) return;
+  try { const r = await api("/api/models/ppo/rollback", { method: "POST" }); showToast("PPO Rolled Back", `active: ${r.active}`, "warn"); await refresh(); }
+  catch (e) { showToast("Rollback Failed", e.message, "bad"); }
+};
+
 // --- Main Refresh Render Loop ---
+let refreshing = false;
 async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
   try {
     const [state, decisions, health, routerData] = await Promise.all([
       api("/api/state").catch(() => null),
@@ -2035,12 +2475,19 @@ async function refresh() {
         <tr><td style="font-weight:700; color:#fff;">API p95 Latency</td><td style="font-family:var(--font-mono);">${health.api?.p95_ms ?? "–"} ms</td></tr>
         <tr><td style="font-weight:700; color:#fff;">API Error Rate</td><td style="font-family:var(--font-mono);">${((health.api?.error_rate || 0) * 100).toFixed(2)}%</td></tr>
       `;
+    } else {
+      $("stream-status").textContent = "BACKEND OFFLINE";
+      $("stream-pulse").style.background = "#f43f5e";
     }
 
-    if (!state) return;
+    if (!state) {
+      $("footer-snapshot-age").textContent = "No simulator state yet. Check that the simulator is running.";
+      return;
+    }
 
     // Header & Clock
-    $("clock-tick").textContent = `Tick ${state.tick}`;
+    $("clock-tick").textContent = `Tick ${state.tick}${state.stale ? " · STALE DATA" : ""}`;
+    $("clock-tick").style.color = state.stale ? "#fbbf24" : "#38bdf8";
     $("clock-service").textContent = `${(state.metrics.service_level * 100).toFixed(2)}%`;
     $("mode-select").value = state.mode;
     $("footer-snapshot-age").textContent = `Snapshot age: ${state.snapshot_age_s}s · Sim status: ${state.sim_status} · Mode: ${state.mode}`;
@@ -2050,18 +2497,22 @@ async function refresh() {
     $("kpi-service-level").textContent = `${servPct.toFixed(2)}%`;
     $("kpi-card-service").className = `kpi-card ${servPct >= 95 ? 'success' : servPct >= 80 ? 'warn' : 'bad'}`;
     $("sla-dot").className = `dot ${servPct >= 95 ? 'ok' : 'bad'}`;
+    $("kpi-service-sub").innerHTML = servPct >= 95
+      ? `<span class="dot ok"></span> Target met`
+      : `<span class="dot bad"></span> ${(95 - servPct).toFixed(1)} pts below the 95% target`;
+    $("station-count-badge").textContent = (state.stations || []).length;
 
     $("kpi-unmet").textContent = `${fmt(state.metrics.unmet_demand_liters)} L`;
     $("kpi-served").textContent = `${fmt(state.metrics.served_demand_liters)} L`;
 
-    const highRisks = (state.risks || []).filter(r => r.p_stockout >= 0.5);
-    $("kpi-at-risk").textContent = highRisks.length;
-    $("kpi-card-risk").className = `kpi-card ${highRisks.length > 2 ? 'bad' : highRisks.length > 0 ? 'warn' : 'success'}`;
-    $("risk-dot").className = `dot ${highRisks.length > 0 ? 'bad' : 'ok'}`;
-    $("kpi-mape").textContent = state.forecast_mape != null ? `${(state.forecast_mape * 100).toFixed(1)}%` : '8.2%';
+    const atRisk = new Set((state.risks || []).filter(r => r.p_stockout >= 0.5).map(r => r.station_id)).size;
+    $("kpi-at-risk").textContent = `${atRisk} / ${(state.stations || []).length}`;
+    $("kpi-card-risk").className = `kpi-card ${atRisk > 2 ? 'bad' : atRisk > 0 ? 'warn' : 'success'}`;
+    $("risk-dot").className = `dot ${atRisk > 0 ? 'bad' : 'ok'}`;
+    $("kpi-mape").textContent = state.forecast_mape != null ? `${(state.forecast_mape * 100).toFixed(1)}%` : '–';
 
-    $("kpi-regime").textContent = (state.router?.regime || "NORMAL").toUpperCase();
-    $("kpi-algo").textContent = (state.router?.algorithm || "MPC").toUpperCase();
+    $("kpi-regime").textContent = (state.router?.regime || "–").replace(/_/g, " ").toUpperCase();
+    $("kpi-algo").textContent = (state.router?.algorithm || "–").toUpperCase();
 
     // Risk Table
     $("risk-table-body").innerHTML = (state.risks || []).slice(0, 8).map(r => {
@@ -2098,10 +2549,14 @@ async function refresh() {
     $("pending-count-badge").textContent = pending.length;
     $("pending-badge-top").textContent = pending.length > 0 ? `${pending.length} Pending` : "None";
 
-    if (pending.length === 0) {
+    if ($("pending-approvals-container").contains(document.activeElement)) {
+      // operator is editing a quantity; re-rendering would drop the edit
+    } else if (pending.length === 0) {
       $("pending-approvals-container").innerHTML = `
         <div style="text-align:center; padding:32px 10px; color:var(--text-muted);">
-          All allocation plans automatically verified &amp; executed via digital twin tournament.
+          ${state.mode === "MANUAL"
+            ? "No plans waiting. In MANUAL mode every new plan appears here for your approval."
+            : "No plans waiting. Plans run automatically unless the safety gate flags them; flagged plans appear here."}
         </div>
       `;
     } else {
@@ -2113,7 +2568,7 @@ async function refresh() {
         return `
           <div class="decision-card">
             <div class="decision-card-head">
-              <span class="decision-algo-badge">${esc(d.algorithm.toUpperCase())} &middot; Tick ${d.tick}${state ? ` (${state.tick - d.tick} ticks old)` : ""}</span>
+              <span class="decision-algo-badge">${esc((d.algorithm || "manual").toUpperCase())} &middot; Tick ${d.tick}${state ? ` (${state.tick - d.tick} ticks old)` : ""}</span>
               <span style="font-size:11px; color:var(--text-secondary);">Regime: ${esc(d.router?.regime || 'unknown')}</span>
             </div>
             <div class="decision-reasons">
@@ -2126,7 +2581,7 @@ async function refresh() {
                 <div class="shipment-row">
                   <span>${esc(s.fuel_type)}: ${esc(s.source_depot_id.replace('depot-',''))} &rarr; ${esc(s.destination_station_id.replace('station-',''))}</span>
                   <div>
-                    <input type="number" step="100" value="${s.quantity}" onchange="updateShipmentQty('${d.id}', ${i}, this.value)"> L
+                    <input type="number" min="0" step="100" value="${s.quantity}" title="Edit litres, then press Enter or click away to save" onchange="updateShipmentQty('${d.id}', ${i}, this.value)"> L
                   </div>
                 </div>
               `).join("")}
@@ -2142,14 +2597,14 @@ async function refresh() {
 
     // Tournament Table (Latest Decision)
     const latestDecision = decisions[0];
-    if (latestDecision && latestDecision.candidates) {
-      $("tournament-winner-badge").textContent = `Winner: ${latestDecision.algorithm.toUpperCase()}`;
+    if (latestDecision && latestDecision.candidates?.length) {
+      $("tournament-winner-badge").textContent = `Tick ${latestDecision.tick} · Winner: ${(latestDecision.algorithm || "–").toUpperCase()}`;
       $("tournament-candidates-body").innerHTML = latestDecision.candidates.map(c => `
         <tr>
           <td style="font-weight:700; color:${c.algorithm === latestDecision.algorithm ? '#38bdf8' : '#fff'};">
             ${c.algorithm === latestDecision.algorithm ? '&#10004; ' : ''}${esc(c.algorithm.toUpperCase())}
           </td>
-          <td style="font-family:var(--font-mono);">${c.score != null ? fmt(c.score) : '<span style="color:#fb7185;">Failed</span>'}</td>
+          <td style="font-family:var(--font-mono);">${c.score != null ? fmt(c.score) : `<span style="color:#fb7185;" title="${esc(c.error || '')}">Failed</span>`}</td>
           <td style="font-family:var(--font-mono);">${c.solve_ms ?? '–'} ms</td>
           <td><span class="status-tag ${c.algorithm === latestDecision.algorithm ? 'tag-open' : 'tag-constrained'}">${c.algorithm === latestDecision.algorithm ? 'CHOSEN' : 'EVALUATED'}</span></td>
         </tr>
@@ -2246,17 +2701,20 @@ async function refresh() {
       const wa = exp.without_action || {};
       const wp = exp.with_plan || {};
       const impactText = wa.unmet != null ? `Unmet ${fmt(wa.unmet)} &rarr; ${fmt(wp.unmet)} L` : "–";
-      const expText = (d.explanation?.text || "Decision plan formulated.").slice(0, 140) + "...";
+      const full = d.explanation?.text || (d.status === "NO_ACTION" ? "No shipments needed or possible this cycle." : "–");
+      const expText = full.length > 140 ? full.slice(0, 140) + "…" : full;
+      const tag = ["EXECUTED", "COMPLETED", "COMPLETED_PARTIAL", "PARTIAL"].includes(d.status) ? "tag-open"
+        : ["PENDING_APPROVAL", "NO_ACTION", "SUPERSEDED", "EXPIRED", "EPOCH_ENDED"].includes(d.status) ? "tag-constrained" : "tag-outage";
       return `
         <tr>
           <td style="font-family:var(--font-mono); font-weight:700; color:#38bdf8;">${d.tick}</td>
-          <td style="font-family:var(--font-mono); font-size:11px;">${d.id}</td>
-          <td><span class="status-tag ${d.status === 'EXECUTED' || d.status === 'COMPLETED' ? 'tag-open' : d.status === 'PENDING_APPROVAL' ? 'tag-constrained' : 'tag-outage'}">${esc(d.status)}</span></td>
+          <td style="font-family:var(--font-mono); font-size:11px;" title="${esc(d.id)}">${esc(String(d.id).slice(0, 8))}</td>
+          <td><span class="status-tag ${tag}">${esc(d.status.replace(/_/g, " "))}</span></td>
           <td style="font-family:var(--font-mono); color:#fff; font-weight:700;">${esc((d.algorithm || '').toUpperCase())}</td>
           <td>${esc(d.actor || 'auto')}</td>
           <td style="font-family:var(--font-mono);">${(d.shipments || []).length} shipments</td>
           <td style="font-family:var(--font-mono); color:#34d399;">${impactText}</td>
-          <td style="color:var(--text-secondary); max-width:340px;" title="${esc(d.explanation?.text || '')}">${esc(expText)}</td>
+          <td style="color:var(--text-secondary); max-width:340px;" title="${esc(full)}">${esc(expText)}</td>
         </tr>
       `;
     }).join("") || `<tr><td colspan="8" style="text-align:center; padding:20px;">No decisions logged yet.</td></tr>`;
@@ -2276,24 +2734,28 @@ async function refresh() {
       `).join("");
     }
 
-    // Bandit Table
+    recordSimHistory(state);
     const modelsData = await api("/api/models").catch(() => null);
-    if (modelsData && modelsData.bandit) {
-      $("bandit-table-body").innerHTML = Object.entries(modelsData.bandit).map(([k, b]) => `
-        <tr>
-          <td style="font-family:var(--font-mono); color:#fff; font-weight:600;">${esc(k)}</td>
-          <td style="font-family:var(--font-mono); color:#38bdf8; font-weight:700;">${(b.win_rate * 100).toFixed(1)}%</td>
-          <td style="font-family:var(--font-mono);">${b.n}</td>
-        </tr>
-      `).join("");
+    renderLearning(state, decisions, modelsData);
+    if ($("tab-distribution").classList.contains("active")) {
+      if (state.tick !== lastRecTick) {  // a full tournament per sim tick, not per 2 s poll
+        lastRec = await api("/api/decisions/recommend", { method: "POST" }).catch(() => lastRec);
+        lastRecTick = state.tick;
+      }
+      const matrix = await api("/api/allocation-matrix").catch(() => null);
+      if (matrix) renderDistribution(matrix, decisions);
     }
 
   } catch (err) {
     console.error("Refresh error:", err);
+  } finally {
+    refreshing = false;
   }
 }
 
 // Initial Call and Interval Loop
+if (!$("admin-token").value) showToast("Read-only until you sign in", "Enter the admin token in Settings (⚙️) to control the simulator and approve plans.", "info");
+document.querySelector(`.nav-tab[data-tab="${location.hash.slice(1)}"]`)?.click();
 refresh();
 setInterval(refresh, 2000);
 </script>

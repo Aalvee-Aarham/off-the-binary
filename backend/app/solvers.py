@@ -277,6 +277,40 @@ def algo_ppo(P, action):
     return _lp(P, needs(P, scale=1.0, z=z), weights=w)[0]
 
 
+def allocation_matrix(snap, fc, paths, arr, risks, policy=None):
+    """Explain the RL allocation: per depot x fuel, every route to a station with the inputs PPO sees, the priority
+    weight and safety factor it chose, the resulting need, and the litres the PPO plan sends. No policy -> weight 3, z 0."""
+    P = build_problem(snap, fc, paths, arr, risks)
+    w = z = None
+    sent = {}
+    if policy is not None:
+        from .policy import decode, features
+        action = policy.act(features(snap, risks, paths))
+        w, z = decode(action, snap)
+        for s in check(finalize(algo_ppo(P, action), snap), snap)[0]:
+            sent[(s["route_id"], s["fuel_type"])] = sent.get((s["route_id"], s["fuel_type"]), 0) + s["quantity"]
+    N = needs(P, z=z if z is not None else 0.0)
+    usable = {r["id"] for r in P.routes}
+    out = []
+    for d in snap["depots"].values():
+        for f in FUELS:
+            rows = []
+            for r in snap["routes"].values():
+                if r["source_depot_id"] != d["id"]:
+                    continue
+                sid, st, rk = r["destination_station_id"], snap["stations"][r["destination_station_id"]], risks[(r["destination_station_id"], f)]
+                rows.append({"station_id": sid, "station_name": st.get("name", sid), "route_id": r["id"],
+                             "route_status": r["status"], "usable": r["id"] in usable, "transit_ticks": r["transit_ticks"],
+                             "max_shipment": r["max_shipment"], "inventory": st["inventory"][f], "capacity": st["capacity"][f],
+                             "demand_4h": rk["demand_4h"], "incoming": rk["incoming"], "p_stockout": rk["p_stockout"],
+                             "hours_to_stockout": rk["hours_to_stockout"], "need": round(float(N.get((sid, f), (0.0,))[0]), 1),
+                             "priority": round(float(w[(sid, f)]), 2) if w else None, "safety": round(float(z[(sid, f)]), 2) if z else None,
+                             "ppo_liters": sent.get((r["id"], f), 0)})
+            out.append({"depot_id": d["id"], "depot_name": d.get("name", d["id"]), "depot_status": d["status"], "fuel": f,
+                        "depot_inventory": d["inventory"][f], "dispatch_left": round(P.depots[d["id"]]["disp"], 1), "rows": rows})
+    return {"tick": snap["tick"], "policy": policy is not None, "depots": out}
+
+
 ALGOS = {"greedy": algo_greedy, "lp": algo_lp, "robust_lp": algo_robust_lp, "mpc": algo_mpc,
          "rationing": algo_rationing, "hold": lambda P: []}
 
