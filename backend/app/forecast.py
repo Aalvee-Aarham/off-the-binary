@@ -34,9 +34,9 @@ class Forecaster:
         return max(self.noise(station), math.sqrt(v)) if v else self.noise(station)
 
     def expected(self, snap, station, fuel, hour):
-        rf = snap["regions"][station["region_id"]]["demand_factor"]
-        return base_rate(station["demand_profile"], fuel, hour, rf, station["demand_multiplier"],
-                         snap["tick_minutes"]) * self.corr.get((station["id"], fuel), 1.0)
+        rf = snap["regions"].get(station.get("region_id"), {}).get("demand_factor", 1.0)
+        return base_rate(station.get("demand_profile", "regional"), fuel, hour, rf, station.get("demand_multiplier", 1.0),
+                         snap.get("tick_minutes", 15)) * self.corr.get((station["id"], fuel), 1.0)
 
     def ingest(self, rows, snap):
         """Update corrections from observed demand. Multiplier is taken from the current snapshot (lag <= 1 cycle)."""
@@ -46,9 +46,9 @@ class Forecaster:
             if not s or r["tick"] <= self.last_tick:
                 continue
             key = (s["id"], r["fuel_type"])
-            rf = snap["regions"][s["region_id"]]["demand_factor"]
-            exp = base_rate(s["demand_profile"], r["fuel_type"], parse_time(r["sim_time"]).hour, rf,
-                            s["demand_multiplier"], snap["tick_minutes"])
+            rf = snap["regions"].get(s.get("region_id"), {}).get("demand_factor", 1.0)
+            exp = base_rate(s.get("demand_profile", "regional"), r["fuel_type"], parse_time(r["sim_time"]).hour, rf,
+                            s.get("demand_multiplier", 1.0), snap.get("tick_minutes", 15))
             if exp < 1e-6:
                 continue
             ratio = r["demand_liters"] / exp
@@ -78,11 +78,11 @@ class Forecaster:
         for e in snap["events"]:
             if e["type"] != "demand_spike" or e["status"] == "RESOLVED":
                 continue
-            p = e["parameters"]
+            p = e.get("parameters") or {}
             sids, rids = p.get("station_ids") or [], p.get("region_ids") or []
-            if (sids or rids) and station["id"] not in sids and station["region_id"] not in rids:
+            if (sids or rids) and station["id"] not in sids and station.get("region_id") not in rids:
                 continue
-            f = float(p.get("multiplier", 1.5))
+            f = max(0.01, float(p.get("multiplier", 1.5)))
             if e["status"] == "SCHEDULED":
                 m[(ticks >= e["start_tick"]) & (ticks <= e["end_tick"])] *= f  # end_tick inclusive (calibrated)
             elif e["status"] == "ACTIVE":
@@ -92,7 +92,8 @@ class Forecaster:
     def paths(self, snap, H):
         """P50 demand per (station, fuel); index i = demand of processed tick t0+i (current tick is processed next)."""
         t0 = parse_time(snap["sim_time"])
-        hours = [(t0 + timedelta(minutes=snap["tick_minutes"] * k)).hour for k in range(H)]
+        tick_mins = snap.get("tick_minutes", 15)
+        hours = [(t0 + timedelta(minutes=tick_mins * k)).hour for k in range(H)]
         out = {}
         for s in snap["stations"].values():
             mp = self._mult_path(snap, s, H)
@@ -121,19 +122,21 @@ def arrivals(snap, H):
 def risks(snap, fc, paths, arr, H):
     """Per (station, fuel): time to stockout (P50) and P(stockout within H) via normal approx."""
     out = {}
-    hours_per_tick = snap["tick_minutes"] / 60
+    hours_per_tick = max(0.01, (snap.get("tick_minutes") or 15) / 60)
+    idx_4h = max(1, int(4 / hours_per_tick))
     for s in snap["stations"].values():
         for f in FUELS:
-            d = paths[(s["id"], f)]
+            d = paths.get((s["id"], f), np.zeros(H))
             a = arr.get((s["id"], f), np.zeros(H + 1))[1:]
-            inv = s["inventory"][f]
+            inv = s["inventory"].get(f, 0.0)
             cum_d, cum_a = np.cumsum(d), np.cumsum(a)
             pos = inv + cum_a - cum_d
             below = np.nonzero(pos < 0)[0]
             tts = int(below[0]) + 1 if below.size else None
             sig = fc.sigma(s, f)
             sd = np.sqrt(np.cumsum((sig * d) ** 2) + (MULT_SIGMA * cum_d) ** 2) + 1e-6
-            p = float(max(1 - _phi(z) for z in (inv + cum_a - cum_d) / sd))
+            z_vals = (inv + cum_a - cum_d) / sd
+            p = float(np.clip(max(1.0 - _phi(z) for z in z_vals), 0.0, 1.0))
             if s["status"] != "OPEN":
                 p = 1.0  # outage: every liter demanded is unmet
             sig_list = []
@@ -144,8 +147,8 @@ def risks(snap, fc, paths, arr, H):
             if tts is not None:
                 sig_list.append(f"P50 stockout in {tts * hours_per_tick:.1f}h")
             out[(s["id"], f)] = {
-                "station_id": s["id"], "fuel": f, "inventory": round(inv, 1), "capacity": s["capacity"][f],
-                "demand_4h": round(float(d[:int(4 / hours_per_tick)].sum()), 1),
+                "station_id": s["id"], "fuel": f, "inventory": round(inv, 1), "capacity": s["capacity"].get(f, 0.0),
+                "demand_4h": round(float(d[:idx_4h].sum()), 1),
                 "incoming": round(float(a.sum()), 1),
                 "hours_to_stockout": round(tts * hours_per_tick, 2) if tts is not None else None,
                 "p_stockout": round(p, 3), "sigma": round(sig, 3),

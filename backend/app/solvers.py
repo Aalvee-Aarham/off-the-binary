@@ -108,7 +108,7 @@ def _lp(P, N, *, fair=False, min_in=None, weights=None):
         idx = [i for i, (r, _) in enumerate(xs) if r["source_depot_id"] == did]
         if idx:
             row([(i, 1.0) for i in idx], d["disp"])
-    res = linprog(c, A_ub=np.array(A), b_ub=b, bounds=bounds, method="highs")
+    res = linprog(c, A_ub=np.array(A) if A else None, b_ub=np.array(b) if b else None, bounds=bounds, method="highs")
     if res.status != 0:
         raise SolverError(f"LP failed: {res.message}")
     plan = [(r["id"], f, float(q)) for (r, f), q in zip(xs, res.x[:nx]) if q > 1]
@@ -291,12 +291,15 @@ def finalize(raw, snap):
         q = math.floor(q / 100) * 100
         if q < config.MIN_SHIPMENT:
             continue
-        r = snap["routes"][rid]
-        n = math.ceil(q / r["max_shipment"])
+        r = snap["routes"].get(rid)
+        if not r or r.get("max_shipment", 0) <= 0:
+            continue
+        n = max(1, math.ceil(q / r["max_shipment"]))
         for i in range(n):
             part = math.floor(q / n / 100) * 100 if i < n - 1 else q - (n - 1) * math.floor(q / n / 100) * 100
-            out.append({"source_depot_id": r["source_depot_id"], "destination_station_id": r["destination_station_id"],
-                        "route_id": rid, "fuel_type": f, "quantity": float(part)})
+            if part > 0:
+                out.append({"source_depot_id": r["source_depot_id"], "destination_station_id": r["destination_station_id"],
+                            "route_id": rid, "fuel_type": f, "quantity": float(part)})
     return out
 
 
@@ -304,9 +307,9 @@ def doomed_routes(snap):
     """Routes AVAILABLE now but disrupted when the current tick is processed (event start_tick <= tick).
     An allocation created now departs during that processing and FAILS, losing its fuel (calibrated)."""
     out = set()
-    for e in snap["events"]:
-        if e["type"] == "route_disruption" and e["status"] == "SCHEDULED" and e["start_tick"] <= snap["tick"]:
-            out |= set(e["parameters"].get("route_ids") or snap["routes"])
+    for e in snap.get("events", []):
+        if e.get("type") == "route_disruption" and e.get("status") == "SCHEDULED" and e.get("start_tick", 999999) <= snap["tick"]:
+            out |= set(e.get("parameters", {}).get("route_ids") or snap["routes"])
     return out
 
 
@@ -331,10 +334,10 @@ def check(ships, snap):
                 "ROUTE_DISRUPTED" if r["status"] != "AVAILABLE" else
                 "ROUTE_DISRUPTED_AT_DEPARTURE" if r["id"] in doomed else
                 "INVALID_QUANTITY" if not q > 0 else
-                "ROUTE_CAPACITY_EXCEEDED" if q > r["max_shipment"] else
-                "INSUFFICIENT_INVENTORY" if q > inv[d["id"]][f] else
-                "DISPATCH_CAPACITY_EXCEEDED" if used[d["id"]] + q > d["dispatch_capacity_per_tick"] else
-                "DESTINATION_CAPACITY_EXCEEDED" if s["inventory"][f] + added.get(k, 0) + q > s["capacity"][f] else None)
+                "ROUTE_CAPACITY_EXCEEDED" if q > r["max_shipment"] + 1e-6 else
+                "INSUFFICIENT_INVENTORY" if q > inv[d["id"]].get(f, 0.0) + 1e-6 else
+                "DISPATCH_CAPACITY_EXCEEDED" if used[d["id"]] + q > d["dispatch_capacity_per_tick"] + 1e-6 else
+                "DESTINATION_CAPACITY_EXCEEDED" if s["inventory"].get(f, 0.0) + added.get(k, 0) + q > s["capacity"].get(f, 0.0) + 1e-6 else None)
         if code:
             rejected.append({**sh, "code": code})
             continue
@@ -414,6 +417,6 @@ def tournament(snap, fc, paths, arr, risks, router_pick, budget=False, policy=No
     hold = next((c for c in ok if c["algorithm"] == "hold"), None)
     return {"candidates": cands, "winner": winner["algorithm"], "best": best["algorithm"], "router_pick": router_pick,
             "router_hit": winner["algorithm"] == router_pick or best["score"] == (pick or {}).get("score"),
-            "shipments": winner["shipments"],
-            "expected": {"without_action": hold["scenarios"]["p50"] if hold else None,
-                         "with_plan": winner["scenarios"]["p50"]}}
+            "shipments": winner.get("shipments", []),
+            "expected": {"without_action": hold["scenarios"]["p50"] if hold and "scenarios" in hold else None,
+                         "with_plan": winner["scenarios"]["p50"] if "scenarios" in winner else None}}

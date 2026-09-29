@@ -293,6 +293,8 @@ def create_app(transport=None, start_loops=True, model_transport=None, llm_trans
         """Full pipeline on the cached snapshot, nothing executed or stored. This is the load-tested path."""
         o = orch(request)
         view_or_503(o)
+        if o.paths is None or o.risks is None:
+            o._analyze(o.store.snap)
         d = await o.decide(o.store.snap, execute=False)
         if d is None:
             raise HTTPException(503, "all solvers failed")

@@ -1,0 +1,287 @@
+{
+  "rows": [
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 10,
+      "seconds": 5.0,
+      "requests": 2393,
+      "rps": 478.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 2393
+      },
+      "avg_ms": 20.9,
+      "p50_ms": 17.1,
+      "p95_ms": 24.3,
+      "p99_ms": 100.9,
+      "max_ms": 649.3,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 50,
+      "seconds": 5.4,
+      "requests": 676,
+      "rps": 124.7,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 676
+      },
+      "avg_ms": 385.4,
+      "p50_ms": 230.7,
+      "p95_ms": 1238.9,
+      "p99_ms": 1762.2,
+      "max_ms": 3654.4,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 100,
+      "seconds": 6.7,
+      "requests": 575,
+      "rps": 85.4,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 575
+      },
+      "avg_ms": 1022.0,
+      "p50_ms": 661.6,
+      "p95_ms": 3751.3,
+      "p99_ms": 4815.8,
+      "max_ms": 5375.5,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 1,
+      "seconds": 5.0,
+      "requests": 52,
+      "rps": 10.4,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 52
+      },
+      "avg_ms": 96.1,
+      "p50_ms": 92.2,
+      "p95_ms": 128.6,
+      "p99_ms": 190.3,
+      "max_ms": 190.3,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 4,
+      "seconds": 5.2,
+      "requests": 65,
+      "rps": 12.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 65
+      },
+      "avg_ms": 318.2,
+      "p50_ms": 315.5,
+      "p95_ms": 386.4,
+      "p99_ms": 578.1,
+      "max_ms": 578.1,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 8,
+      "seconds": 5.2,
+      "requests": 71,
+      "rps": 13.6,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 71
+      },
+      "avg_ms": 578.5,
+      "p50_ms": 563.7,
+      "p95_ms": 837.9,
+      "p99_ms": 852.7,
+      "max_ms": 852.7,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 10,
+      "seconds": 5.0,
+      "requests": 1916,
+      "rps": 383.7,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 1916
+      },
+      "avg_ms": 26.0,
+      "p50_ms": 16.4,
+      "p95_ms": 51.0,
+      "p99_ms": 289.6,
+      "max_ms": 994.3,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 50,
+      "seconds": 5.1,
+      "requests": 1340,
+      "rps": 260.7,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 1340
+      },
+      "avg_ms": 188.5,
+      "p50_ms": 138.0,
+      "p95_ms": 536.6,
+      "p99_ms": 794.5,
+      "max_ms": 1087.6,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 100,
+      "seconds": 5.5,
+      "requests": 1085,
+      "rps": 198.2,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 1085
+      },
+      "avg_ms": 477.8,
+      "p50_ms": 338.7,
+      "p95_ms": 1452.6,
+      "p99_ms": 2014.6,
+      "max_ms": 3116.0,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 1,
+      "seconds": 5.0,
+      "requests": 58,
+      "rps": 11.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 58
+      },
+      "avg_ms": 86.6,
+      "p50_ms": 86.2,
+      "p95_ms": 106.0,
+      "p99_ms": 114.9,
+      "max_ms": 114.9,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 4,
+      "seconds": 5.0,
+      "requests": 66,
+      "rps": 13.2,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 66
+      },
+      "avg_ms": 302.4,
+      "p50_ms": 295.8,
+      "p95_ms": 414.0,
+      "p99_ms": 624.0,
+      "max_ms": 624.0,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 8,
+      "seconds": 5.3,
+      "requests": 71,
+      "rps": 13.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 71
+      },
+      "avg_ms": 583.1,
+      "p50_ms": 569.2,
+      "p95_ms": 921.7,
+      "p99_ms": 934.1,
+      "max_ms": 934.1,
+      "phase": "sim latency fault 500ms"
+    }
+  ],
+  "health": {
+    "status": "healthy",
+    "version": "0.2.0",
+    "mode": "AUTO_GATED",
+    "degraded_mode": false,
+    "components": {
+      "backend_api": {
+        "status": "healthy"
+      },
+      "database": {
+        "status": "healthy"
+      },
+      "simulator": {
+        "status": "healthy",
+        "breaker": "closed",
+        "stale": false,
+        "last_error": null,
+        "sim": {
+          "status": "PAUSED",
+          "tick": 328
+        }
+      },
+      "event_stream": {
+        "status": "healthy",
+        "note": null
+      },
+      "prediction": {
+        "status": "healthy",
+        "mape": 0.08173888716635339
+      },
+      "decision_engine": {
+        "status": "healthy",
+        "last_cycle": {
+          "ok": true,
+          "at": 1790666676.1418483,
+          "ms": 1926.1,
+          "error": null,
+          "tick": 328
+        },
+        "budget_mode": true
+      },
+      "ml_service": {
+        "status": "not_configured",
+        "fallback": "rule table"
+      },
+      "jev": {
+        "status": "healthy",
+        "breaker": "closed",
+        "primary": false
+      },
+      "llm_pool": {
+        "status": "healthy",
+        "usable_keys": {
+          "groq": 10,
+          "gemini": 11
+        },
+        "total_keys": 21,
+        "fallback": null
+      }
+    },
+    "api": {
+      "p95_ms": 258.3,
+      "error_rate": 0.0,
+      "requests": 2000
+    },
+    "last_invalid_response": null
+  }
+}

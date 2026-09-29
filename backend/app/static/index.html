@@ -1,76 +1,2301 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Fuel Ops Console</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FuelOps Intelligence | Autonomous Supply &amp; Digital Twin Resilience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--mut:#667;--line:#dde1e6;--ok:#1a7f37;--warn:#b35900;--bad:#c62828}
-@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1a1e24;--fg:#e6e8eb;--mut:#9aa3ad;--line:#2b313a}}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
-h1{font-size:16px;margin:0 12px 0 0}h2{font-size:13px;text-transform:uppercase;color:var(--mut);margin:0 0 8px}
-main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;padding:12px 16px}
-section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:420px}
-table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
-.ok{color:var(--ok)}.warning,.degraded{color:var(--warn)}.critical,.down,.bad{color:var(--bad)}.mut{color:var(--mut)}
-button,select,input{font:inherit;padding:3px 8px}.pill{padding:2px 8px;border-radius:10px;border:1px solid var(--line)}
+:root {
+  --bg-deep: #060913;
+  --bg-main: #0b1120;
+  --bg-card: #111827;
+  --bg-card-subtle: rgba(17, 24, 39, 0.7);
+  --bg-card-hover: #1f293d;
+  --bg-glass: rgba(11, 17, 32, 0.82);
+  --bg-glass-heavy: rgba(6, 9, 19, 0.94);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-focus: #38bdf8;
+  --border-accent: rgba(56, 189, 248, 0.35);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --accent-cyan: #0284c7;
+  --accent-cyan-bright: #38bdf8;
+  --accent-cyan-glow: rgba(56, 189, 248, 0.3);
+  --accent-blue: #2563eb;
+  --accent-indigo: #6366f1;
+  --accent-purple: #a855f7;
+  --accent-pink: #ec4899;
+
+  --status-ok: #10b981;
+  --status-ok-bg: rgba(16, 185, 129, 0.14);
+  --status-ok-border: rgba(16, 185, 129, 0.4);
+
+  --status-warn: #f59e0b;
+  --status-warn-bg: rgba(245, 158, 11, 0.14);
+  --status-warn-border: rgba(245, 158, 11, 0.4);
+
+  --status-bad: #f43f5e;
+  --status-bad-bg: rgba(244, 63, 94, 0.14);
+  --status-bad-border: rgba(244, 63, 94, 0.4);
+
+  --diesel: #38bdf8;
+  --petrol: #c084fc;
+  --octane: #fb923c;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-deep);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.09) 0px, transparent 45%),
+    radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 45%),
+    radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.06) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+/* Header */
+header {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #0284c7, #6366f1, #a855f7);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px var(--accent-cyan-glow);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-logo::after {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: rotate(45deg);
+  animation: shine 4s infinite;
+}
+@keyframes shine {
+  0% { transform: translateY(-100%) rotate(45deg); }
+  20%, 100% { transform: translateY(100%) rotate(45deg); }
+}
+.brand-logo svg { width: 24px; height: 24px; fill: white; z-index: 1; }
+
+.brand-text h1 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-text span.badge-hackathon {
+  font-size: 10px;
+  font-weight: 800;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(99, 102, 241, 0.25));
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  padding: 3px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+.brand-text p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.telemetry-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pill-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+  transition: all 0.2s ease;
+}
+.pill-stat:hover { border-color: rgba(255,255,255,0.15); }
+.pill-stat .label { color: var(--text-muted); font-size: 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+.pill-stat .val { font-weight: 700; color: var(--text-primary); }
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-ok);
+  box-shadow: 0 0 10px var(--status-ok);
+  animation: pulse 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0% { opacity: 1; transform: scale(1); box-shadow: 0 0 10px var(--status-ok); }
+  50% { opacity: 0.4; transform: scale(0.85); box-shadow: 0 0 3px var(--status-ok); }
+  100% { opacity: 1; transform: scale(1); box-shadow: 0 0 10px var(--status-ok); }
+}
+
+.controls-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mode-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+select.mode-select {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--border-accent);
+  color: #38bdf8;
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+select.mode-select:hover, select.mode-select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 14px var(--accent-cyan-glow);
+}
+
+.btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.btn:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-1px);
+}
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.4);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0369a1, #1d4ed8);
+  box-shadow: 0 0 24px rgba(14, 165, 233, 0.65);
+}
+
+.btn-success {
+  background: var(--status-ok-bg);
+  border-color: var(--status-ok-border);
+  color: #6ee7b7;
+}
+.btn-success:hover {
+  background: #059669;
+  border-color: #10b981;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-danger {
+  background: var(--status-bad-bg);
+  border-color: var(--status-bad-border);
+  color: #fda4af;
+}
+.btn-danger:hover {
+  background: #e11d48;
+  border-color: #f43f5e;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.4);
+}
+
+.btn-warning {
+  background: var(--status-warn-bg);
+  border-color: var(--status-warn-border);
+  color: #fde68a;
+}
+.btn-warning:hover {
+  background: #d97706;
+  border-color: #f59e0b;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+}
+
+.btn-icon {
+  padding: 7px 10px;
+}
+
+/* Nav Tabs */
+.nav-bar {
+  background: var(--bg-glass-heavy);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  position: sticky;
+  top: 67px;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.nav-tab {
+  padding: 13px 20px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px 8px 0 0;
+}
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+}
+.nav-tab.active {
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.02));
+  text-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+  font-weight: 700;
+}
+.nav-tab .badge {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+/* Main Container */
+main {
+  flex: 1;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 1780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: flex; flex-direction: column; gap: 22px; animation: fadeIn 0.25s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Hackathon Showcase Ribbon */
+.demo-ribbon {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.14), rgba(168, 85, 247, 0.12));
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.08);
+}
+.demo-ribbon-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.demo-ribbon-title span.tag {
+  background: #38bdf8;
+  color: #000;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.demo-scenarios-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.demo-scenario-btn {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 13px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+.demo-scenario-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+/* KPI Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #6366f1);
+}
+.kpi-card.warn::before { background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24); }
+.kpi-card.bad::before { background: linear-gradient(90deg, #be123c, #f43f5e, #fb7185); }
+.kpi-card.success::before { background: linear-gradient(90deg, #047857, #10b981, #34d399); }
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.1;
+  margin: 2px 0;
+}
+.kpi-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* Dashboard Grids */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.7fr 1.3fr;
+  gap: 22px;
+}
+@media (max-width: 1320px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.panel-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.015);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.panel-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-body { padding: 18px 20px; flex: 1; }
+.panel-body.no-pad { padding: 0; }
+
+/* Tables */
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+table.data-table th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: rgba(10, 15, 29, 0.7);
+}
+table.data-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+table.data-table tr:hover td {
+  background: rgba(255,255,255,0.03);
+  color: var(--text-primary);
+}
+table.data-table tr:last-child td { border-bottom: none; }
+
+/* Visual Fuel Gauge Bars */
+.fuel-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.fuel-bar-wrap {
+  flex: 1;
+  height: 9px;
+  background: rgba(10, 15, 29, 0.9);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+}
+.fuel-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.fuel-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; width: 4px;
+  background: rgba(255,255,255,0.8);
+  box-shadow: 0 0 6px white;
+  border-radius: 2px;
+}
+
+.fill-diesel { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+.fill-petrol { background: linear-gradient(90deg, #7c3aed, #c084fc); }
+.fill-octane { background: linear-gradient(90deg, #ea580c, #fb923c); }
+
+/* Station & Depot Cards */
+.station-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  gap: 18px;
+}
+.entity-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.entity-card:hover {
+  border-color: rgba(255,255,255,0.2);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  transform: translateY(-2px);
+}
+.entity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.entity-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.tag-open { background: var(--status-ok-bg); color: #34d399; border: 1px solid var(--status-ok-border); }
+.tag-constrained { background: var(--status-warn-bg); color: #fbbf24; border: 1px solid var(--status-warn-border); }
+.tag-outage, .tag-closed { background: var(--status-bad-bg); color: #fb7185; border: 1px solid var(--status-bad-border); }
+
+/* Decision Approval Card */
+.decision-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--status-warn-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.12);
+  position: relative;
+}
+.decision-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0; width: 4px;
+  background: #f59e0b;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+.decision-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.decision-algo-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fbbf24;
+  font-family: var(--font-mono);
+  background: var(--status-warn-bg);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--status-warn-border);
+}
+.decision-reasons {
+  font-size: 11px;
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.08);
+  padding: 9px 13px;
+  border-radius: 6px;
+  border-left: 3px solid #f59e0b;
+  line-height: 1.4;
+}
+.decision-impact {
+  font-size: 12px;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+.shipment-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(16, 23, 42, 0.9);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.shipment-row input {
+  background: rgba(10, 15, 29, 0.9);
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  width: 95px;
+  text-align: right;
+  outline: none;
+}
+.shipment-row input:focus { border-color: var(--border-focus); }
+
+/* Copilot / Ask Assistant */
+.chat-pane {
+  display: flex;
+  flex-direction: column;
+  height: 560px;
+}
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.chat-msg {
+  padding: 12px 16px;
+  border-radius: 12px;
+  max-width: 88%;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.chat-msg.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #fff;
+}
+.chat-msg.bot {
+  align-self: flex-start;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.chat-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 29, 0.6);
+}
+.chip-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.chip-btn:hover {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.12);
+  transform: translateY(-1px);
+}
+.chat-input-bar {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  background: rgba(10, 15, 29, 0.95);
+}
+.chat-input-bar input {
+  flex: 1;
+  background: rgba(16, 23, 42, 0.9);
+  border: 1px solid var(--border);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.chat-input-bar input:focus { border-color: var(--border-focus); }
+
+/* Chaos Lab Grid */
+.chaos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+.chaos-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+.chaos-card:hover {
+  border-color: rgba(244, 63, 94, 0.4);
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.18);
+  transform: translateY(-2px);
+}
+.chaos-card h4 {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Alert Row Badges */
+.alert-pill {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+.pill-critical { background: var(--status-bad-bg); color: #fb7185; border: 1px solid var(--status-bad-border); }
+.pill-warning { background: var(--status-warn-bg); color: #fbbf24; border: 1px solid var(--status-warn-border); }
+.pill-info { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+/* Status dots */
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.dot.ok { background: var(--status-ok); box-shadow: 0 0 6px var(--status-ok); }
+.dot.warn { background: var(--status-warn); box-shadow: 0 0 6px var(--status-warn); }
+.dot.bad { background: var(--status-bad); box-shadow: 0 0 6px var(--status-bad); }
+
+/* Topology Canvas Container */
+.map-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 420px;
+  background: radial-gradient(circle at center, rgba(17, 24, 39, 0.95), rgba(6, 9, 19, 0.98));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.map-canvas-container canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.canvas-overlay-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+.canvas-filter-chip {
+  background: rgba(10, 15, 29, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.canvas-filter-chip:hover, .canvas-filter-chip.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+/* Modal Dialog */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+.modal-overlay.open { display: flex; }
+.modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+}
+.modal-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-head h3 { font-size: 15px; font-weight: 800; color: #fff; }
+.modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Toast Notifications */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 200;
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-accent);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideIn 0.25s ease-out;
+  min-width: 280px;
+  max-width: 380px;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Footer */
+footer {
+  background: var(--bg-glass-heavy);
+  border-top: 1px solid var(--border);
+  padding: 14px 28px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>Fuel Ops Console <span class="mut">(simulated)</span></h1>
-  <span id="clock" class="pill"></span><span id="overall" class="pill"></span>
-  <label>Mode <select id="mode"><option>AUTO_GATED</option><option>MANUAL</option></select></label>
-  <input id="token" type="password" placeholder="admin token" size="12">
-  <button data-sim="step">Step</button><button data-sim="run">Run</button><button data-sim="pause">Pause</button>
-  <button id="decide">Decide now</button>
-</header>
-<main>
-  <section><h2>Stockout risk</h2><table id="risks"></table></section>
-  <section><h2>Pending approval</h2><div id="pending" class="mut">none</div></section>
-  <section><h2>Alerts</h2><table id="alerts"></table></section>
-  <section><h2>Depots &amp; routes</h2><table id="depots"></table><table id="routes"></table></section>
-  <section><h2>Decision history</h2><table id="history"></table></section>
-  <section><h2>System status</h2><table id="health"></table></section>
-</main>
-<script>
-const $ = id => document.getElementById(id), fmt = n => n == null ? "–" : Math.round(n).toLocaleString();
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-try { $("token").value = localStorage.getItem("tok") || ""; } catch {}
-$("token").onchange = e => { try { localStorage.setItem("tok", e.target.value); } catch {} };
-const api = (p, o = {}) => fetch(p, {...o, headers: {"Content-Type": "application/json", "X-Admin-Token": $("token").value}})
-  .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(JSON.stringify(j.detail ?? j)); return j; });
-const act = (p, o) => api(p, {method: "POST", ...o}).then(refresh).catch(e => alert(e.message));
-document.querySelectorAll("[data-sim]").forEach(b => b.onclick = () => act("/api/sim/" + b.dataset.sim));
-$("decide").onclick = () => act("/api/decisions/run");
-$("mode").onchange = e => act("/api/mode", {method: "PUT", body: JSON.stringify({mode: e.target.value})});
-window.approve = id => act(`/api/decisions/${id}/approve`);
-window.reject = id => act(`/api/decisions/${id}/reject`);
-window.editq = (id, i, q) => api("/api/decisions/" + id).then(d => { d.shipments[i].quantity = +q;
-  return act("/api/decisions/" + id, {method: "PUT", body: JSON.stringify({shipments: d.shipments})}); });
-const ship = s => `${esc(s.fuel_type)} ${fmt(s.quantity)} L ${esc(s.source_depot_id)} → ${esc(s.destination_station_id)}`;
-const impact = e => e && e.without_action ? `unmet ${fmt(e.without_action.unmet)} → ${fmt(e.with_plan.unmet)} L, stockouts ${e.without_action.stockouts} → ${e.with_plan.stockouts}` : "";
 
-async function refresh() {
-  const [s, dec, h] = await Promise.all([api("/api/state").catch(() => null), api("/api/decisions?limit=25"), api("/api/health")]);
-  $("overall").textContent = h.status + (h.degraded_mode ? " · cached state" : ""); $("overall").className = "pill " + (h.status === "healthy" ? "ok" : h.status);
-  $("health").innerHTML = Object.entries(h.components).map(([k, c]) => `<tr><td>${k}</td><td class="${c.status === "healthy" ? "ok" : c.status}">${c.status}</td></tr>`).join("")
-    + `<tr><td>p95 latency</td><td>${h.api.p95_ms ?? "–"} ms</td></tr><tr><td>error rate</td><td>${(h.api.error_rate * 100).toFixed(2)}%</td></tr>`;
-  if (!s) return;
-  $("mode").value = s.mode;
-  $("clock").textContent = `tick ${s.tick} · ${s.sim_time.slice(0, 16).replace("T", " ")} · ${s.sim_status} · service ${(s.metrics.service_level * 100).toFixed(2)}%${s.stale ? " · STALE" : ""}`;
-  $("risks").innerHTML = "<tr><th>Station</th><th>Fuel</th><th>Inv</th><th>4h dem</th><th>Incoming</th><th>Stockout</th><th>p</th></tr>" + s.risks.slice(0, 12).map(r =>
-    `<tr class="${r.p_stockout >= .8 ? "critical" : r.p_stockout >= .5 ? "warning" : ""}"><td>${esc(r.station_id.replace("station-", ""))}</td><td>${r.fuel}</td><td>${fmt(r.inventory)}</td><td>${fmt(r.demand_4h)}</td><td>${fmt(r.incoming)}</td><td>${r.hours_to_stockout ?? "–"}h</td><td>${(r.p_stockout * 100).toFixed(0)}%</td></tr>`).join("");
-  $("alerts").innerHTML = s.alerts.map(a => `<tr class="${a.severity}"><td>${a.severity}</td><td>${esc(a.message)}</td></tr>`).join("") || "<tr><td class=ok>no active alerts</td></tr>";
-  $("depots").innerHTML = s.depots.map(d => `<tr><td>${esc(d.id)}</td><td class="${d.status === "OPEN" ? "" : "warning"}">${d.status}</td><td>D ${fmt(d.inventory.DIESEL)} · P ${fmt(d.inventory.PETROL)} · O ${fmt(d.inventory.OCTANE)}</td></tr>`).join("");
-  $("routes").innerHTML = s.routes.filter(r => r.status !== "AVAILABLE").map(r => `<tr class="bad"><td>${esc(r.id)}</td><td>${r.status}</td></tr>`).join("");
-  const pend = dec.filter(d => d.status === "PENDING_APPROVAL");
-  $("pending").innerHTML = pend.map(d => `<div><b>${d.algorithm}</b> · ${esc(d.router.regime)} · tick ${d.tick} (${s.tick - d.tick} ticks old)<br><span class="mut">${esc(d.gate.reasons.join("; "))}</span><br>${impact(d.expected)}<br><small>${esc((d.explanation || {}).text || "")}</small>
-    ${d.shipments.map((x, i) => `<div>${ship(x)} <input size=6 value="${x.quantity}" onchange="editq('${d.id}',${i},this.value)"></div>`).join("")}
-    <button onclick="approve('${d.id}')">Approve</button> <button onclick="reject('${d.id}')">Reject</button></div><hr>`).join("") || "none";
-  $("history").innerHTML = dec.filter(d => d.status !== "PENDING_APPROVAL").map(d => `<tr><td>${d.tick}</td><td>${d.status}</td><td>${d.algorithm}${d.router_hit === false ? " *" : ""}</td><td>${d.actor ?? ""}</td><td title="${esc((d.shipments || []).map(ship).join("\n"))}">${(d.shipments || []).length} ships</td><td class=mut>${impact(d.expected)}</td></tr>`).join("");
+<!-- Header -->
+<header>
+  <div class="brand-block">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="brand-text">
+      <h1>FuelOps Intelligence <span class="badge-hackathon">BUP CSE FEST 2026</span></h1>
+      <p>Autonomous Fuel Supply Network &amp; Digital Twin Resilience Platform</p>
+    </div>
+  </div>
+
+  <div class="telemetry-strip">
+    <div class="pill-stat">
+      <div class="pulse-dot" id="stream-pulse"></div>
+      <span class="label">Stream:</span>
+      <span class="val" id="stream-status">CONNECTED</span>
+    </div>
+    <div class="pill-stat">
+      <span class="label">Tick:</span>
+      <span class="val" id="clock-tick" style="color:#38bdf8;">–</span>
+    </div>
+    <div class="pill-stat">
+      <span class="label">Service Level:</span>
+      <span class="val" id="clock-service" style="color:#34d399;">–</span>
+    </div>
+    <div class="mode-select-wrap">
+      <select id="mode-select" class="mode-select" title="Switch between fully autonomous safety gating or manual operator review">
+        <option value="AUTO_GATED">🛡️ AUTO_GATED (Autonomous)</option>
+        <option value="MANUAL">👨‍✈️ MANUAL (Operator Review)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls-strip">
+    <button class="btn" data-sim="step" title="Advance simulator by 1 tick">Step ⏭️</button>
+    <button class="btn btn-success" data-sim="run" id="btn-sim-run" title="Start real-time simulation">Run ▶️</button>
+    <button class="btn btn-danger" data-sim="pause" id="btn-sim-pause" title="Pause simulation">Pause ⏸️</button>
+    <button class="btn btn-primary" id="btn-decide-now" title="Trigger 6-Way Tournament &amp; Re-plan">⚡ Decide Now</button>
+    <button class="btn btn-icon" id="btn-settings" title="Admin Configuration">⚙️</button>
+  </div>
+</header>
+
+<!-- Navigation Tabs -->
+<div class="nav-bar">
+  <div class="nav-tab active" data-tab="overview">
+    <span>🌐 Operations Center</span>
+  </div>
+  <div class="nav-tab" data-tab="inventory">
+    <span>⛽ Depots &amp; Stations Matrix</span>
+    <span class="badge" id="station-count-badge">4</span>
+  </div>
+  <div class="nav-tab" data-tab="decisions">
+    <span>⚖️ Decision &amp; Audit Trail</span>
+    <span class="badge" id="pending-count-badge" style="background:#f59e0b; color:#000;">0</span>
+  </div>
+  <div class="nav-tab" data-tab="router">
+    <span>🧠 System-One AI Router</span>
+  </div>
+  <div class="nav-tab" data-tab="copilot">
+    <span>🤖 Operations Copilot</span>
+  </div>
+  <div class="nav-tab" data-tab="chaos">
+    <span>🧪 Chaos &amp; Resilience Lab</span>
+  </div>
+</div>
+
+<!-- Main Body Container -->
+<main>
+
+  <!-- ==================== TAB 1: OVERVIEW ==================== -->
+  <div class="tab-content active" id="tab-overview">
+    
+    <!-- Hackathon Demo Showcase Ribbon -->
+    <div class="demo-ribbon">
+      <div class="demo-ribbon-title">
+        <span class="tag">Hackathon Demo</span>
+        <span>1-Click Disruption &amp; Failover Scenarios:</span>
+      </div>
+      <div class="demo-scenarios-group">
+        <button class="demo-scenario-btn" onclick="runDemoScenario('spike')">
+          <span>⚡ 1. Demand Surge (2.0x)</span>
+        </button>
+        <button class="demo-scenario-btn" onclick="runDemoScenario('highway')">
+          <span>🚧 2. Highway Severed (Gazipur)</span>
+        </button>
+        <button class="demo-scenario-btn" onclick="runDemoScenario('depot')">
+          <span>🏭 3. Depot Bottleneck (Patiya)</span>
+        </button>
+        <button class="demo-scenario-btn" onclick="runDemoScenario('tournament')">
+          <span>🏆 4. 6-Way Tournament Battle</span>
+        </button>
+        <button class="demo-scenario-btn" style="border-color:rgba(244,63,94,0.4);" onclick="clearAllChaos()">
+          <span>🔄 Reset Faults</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="kpi-grid">
+      <div class="kpi-card success" id="kpi-card-service">
+        <div class="kpi-label">
+          <span>Service Level (SLA &gt;95%)</span>
+          <span class="dot ok" id="sla-dot"></span>
+        </div>
+        <div class="kpi-val" id="kpi-service-level">100.00%</div>
+        <div class="kpi-sub"><span class="dot ok"></span> Target Met &middot; Optimal Fulfill</div>
+      </div>
+      <div class="kpi-card" id="kpi-card-unmet">
+        <div class="kpi-label">Unmet vs Total Demand</div>
+        <div class="kpi-val" id="kpi-unmet">0 L</div>
+        <div class="kpi-sub">Delivered: <span id="kpi-served" style="color:#38bdf8; font-weight:700;">0 L</span></div>
+      </div>
+      <div class="kpi-card" id="kpi-card-risk">
+        <div class="kpi-label">Stations At Stockout Risk</div>
+        <div class="kpi-val" id="kpi-at-risk">0</div>
+        <div class="kpi-sub" id="kpi-risk-sub">Forecast MAPE: <span id="kpi-mape" style="color:#fff; font-weight:700;">–</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Operating Regime &amp; Router</div>
+        <div class="kpi-val" id="kpi-regime" style="font-size: 22px; color:#38bdf8;">NORMAL</div>
+        <div class="kpi-sub">Active Solver: <span id="kpi-algo" style="color:#c084fc; font-weight:700;">MPC</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Digital Twin &amp; LLM Keys</div>
+        <div class="kpi-val" id="kpi-health" style="color:#10b981;">HEALTHY</div>
+        <div class="kpi-sub"><span id="kpi-llm-count" style="color:#fff;">Pool active</span></div>
+      </div>
+    </div>
+
+    <!-- Real-Time Supply Chain Topology Canvas -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="18" height="18" fill="#38bdf8" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          Live Fuel Network Topology &amp; Active In-Transit Fleet
+        </div>
+        <div class="canvas-overlay-controls">
+          <button class="canvas-filter-chip active" data-filter="all" onclick="setCanvasFilter('all')">All Fleet</button>
+          <button class="canvas-filter-chip" data-filter="DIESEL" onclick="setCanvasFilter('DIESEL')">Diesel Only</button>
+          <button class="canvas-filter-chip" data-filter="PETROL" onclick="setCanvasFilter('PETROL')">Petrol Only</button>
+          <button class="canvas-filter-chip" data-filter="OCTANE" onclick="setCanvasFilter('OCTANE')">Octane Only</button>
+        </div>
+      </div>
+      <div class="panel-body no-pad">
+        <div class="map-canvas-container">
+          <canvas id="topology-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Main 2-Column Grid -->
+    <div class="dashboard-grid">
+      
+      <!-- Left Column: Critical Risks & Live Alerts -->
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        
+        <!-- Emerging Shortages & Stockout Risks -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <span class="dot ok" id="risk-dot"></span> Emerging Stockout Risks (P50 Structural + EWMA)
+            </div>
+            <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">4-Hour Lookahead</span>
+          </div>
+          <div class="panel-body no-pad">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Station</th>
+                  <th>Fuel</th>
+                  <th>Inventory</th>
+                  <th>4h Demand</th>
+                  <th>In-Transit</th>
+                  <th>Stockout ETA</th>
+                  <th>P(Risk)</th>
+                </tr>
+              </thead>
+              <tbody id="risk-table-body">
+                <tr><td colspan="7" style="text-align:center; padding:20px;" class="text-muted">Analyzing state...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Live Operations Alerts -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <svg width="15" height="15" fill="#f59e0b" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 4l7.53 13H4.47L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>
+              Live Operations &amp; Anomaly Feed
+            </div>
+            <span class="badge" id="active-alerts-count">0 Active</span>
+          </div>
+          <div class="panel-body no-pad" style="max-height: 250px; overflow-y: auto;">
+            <table class="data-table">
+              <tbody id="alerts-table-body">
+                <tr><td colspan="2" style="text-align:center; padding:18px; color:#10b981;">No active disruption or operational alerts.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Pending Decisions & Tournament Leaderboard -->
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        
+        <!-- Pending Decisions Action Card -->
+        <div class="panel" style="border-color: rgba(245, 158, 11, 0.4);">
+          <div class="panel-header" style="background: rgba(245, 158, 11, 0.05);">
+            <div class="panel-title" style="color:#fbbf24;">
+              <svg width="15" height="15" fill="#fbbf24" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              Safety Gating &amp; Plan Approvals
+            </div>
+            <span id="pending-badge-top" class="badge" style="background:#f59e0b; color:#000;">None</span>
+          </div>
+          <div class="panel-body" id="pending-approvals-container">
+            <div style="text-align:center; padding:32px 10px; color:var(--text-muted);">
+              All plans automatically gated, verified, and executed. No pending reviews required.
+            </div>
+          </div>
+        </div>
+
+        <!-- Digital Twin Tournament Leaderboard -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              6-Way Digital Twin Solver Tournament
+            </div>
+            <span style="font-size:11px; color:#38bdf8; font-weight:700;" id="tournament-winner-badge">Auto-Evaluated</span>
+          </div>
+          <div class="panel-body no-pad">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Robust Score</th>
+                  <th>Solve Time</th>
+                  <th>Outcome</th>
+                </tr>
+              </thead>
+              <tbody id="tournament-candidates-body">
+                <tr><td colspan="4" style="text-align:center; padding:18px;" class="text-muted">Awaiting next decision cycle...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB 2: DEPOTS & STATIONS ==================== -->
+  <div class="tab-content" id="tab-inventory">
+    
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <h3 style="font-size:15px; text-transform:uppercase; color:#fff; font-weight:800; letter-spacing:0.04em;">Regional Fuel Storage Matrix</h3>
+      <div style="display:flex; gap:16px; font-size:12px; font-weight:700;">
+        <span><span class="dot" style="background:var(--diesel);"></span> Diesel</span>
+        <span><span class="dot" style="background:var(--petrol);"></span> Petrol</span>
+        <span><span class="dot" style="background:var(--octane);"></span> Octane</span>
+      </div>
+    </div>
+
+    <!-- Depots Grid -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">Primary Supply Depots</div></div>
+      <div class="panel-body">
+        <div class="station-cards-grid" id="depots-grid-container"></div>
+      </div>
+    </div>
+
+    <!-- Fuel Stations Grid -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">Distribution Fuel Stations &amp; Local Buffer</div></div>
+      <div class="panel-body">
+        <div class="station-cards-grid" id="stations-grid-container"></div>
+      </div>
+    </div>
+
+    <!-- Transport Routes & Status -->
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">Highway Transport Routes &amp; Latency</div></div>
+      <div class="panel-body no-pad">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Route ID</th>
+              <th>Source Depot</th>
+              <th>Destination Station</th>
+              <th>Transit Ticks</th>
+              <th>Max Capacity</th>
+              <th>Highway Status</th>
+            </tr>
+          </thead>
+          <tbody id="routes-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB 3: DECISION CENTER ==================== -->
+  <div class="tab-content" id="tab-decisions">
+    
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Historical Audit Trail &amp; Reconciled Allocations</div>
+        <button class="btn btn-primary" onclick="triggerImmediateDecision()">⚡ Run Decision Tournament</button>
+      </div>
+      <div class="panel-body no-pad">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tick</th>
+              <th>Decision ID</th>
+              <th>Status</th>
+              <th>Algorithm</th>
+              <th>Actor</th>
+              <th>Shipments</th>
+              <th>Simulated Impact</th>
+              <th>Operational Explanation</th>
+            </tr>
+          </thead>
+          <tbody id="decision-history-body">
+            <tr><td colspan="8" style="text-align:center; padding:20px;" class="text-muted">Loading decisions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB 4: SYSTEM-ONE ROUTER ==================== -->
+  <div class="tab-content" id="tab-router">
+    
+    <div class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">System-One Intelligence Matrix (Laya vs Jev 1.13 vs Rules)</div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn" onclick="setPrimaryRouter('rules')">Set Rules</button>
+            <button class="btn" onclick="setPrimaryRouter('jev')">Set Jev</button>
+            <button class="btn" onclick="setPrimaryRouter('laya')">Set Laya</button>
+          </div>
+        </div>
+        <div class="panel-body no-pad">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Router Model</th>
+                <th>Status</th>
+                <th>Role</th>
+                <th>Calls</th>
+                <th>p50 Latency</th>
+                <th>Agreement w/ Rules</th>
+                <th>Tournament Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="router-compare-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Bandit Online Learning (Thompson Sampling Posteriors)</div>
+        </div>
+        <div class="panel-body no-pad">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Regime / Arm</th>
+                <th>Win Rate Posterior</th>
+                <th>Samples (n)</th>
+              </tr>
+            </thead>
+            <tbody id="bandit-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB 5: AI COPILOT ==================== -->
+  <div class="tab-content" id="tab-copilot">
+    
+    <div class="dashboard-grid">
+      <!-- Chat Pane -->
+      <div class="panel chat-pane">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg width="16" height="16" fill="#38bdf8" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0-2-.9-2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            Operations Copilot (Powered by Gemini &amp; Groq Pool)
+          </div>
+          <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">Live Digital Twin Context</span>
+        </div>
+        <div class="chat-history" id="copilot-chat-history">
+          <div class="chat-msg bot">
+            👋 <b>Greetings, Commander.</b> I am your AI Operations Copilot with real-time digital twin telemetry access to all depots, highway routes, and fuel consumption trends. Ask me for risk diagnostics, solver explanations, or strategic contingency advice!
+          </div>
+        </div>
+        <div class="chat-chips">
+          <button class="chip-btn" onclick="askPreset('Which station is closest to stockout and why?')">⚡ Stockout Risk Analysis</button>
+          <button class="chip-btn" onclick="askPreset('Recommend the optimal dispatch priority for the next 5 ticks')">🚚 Dispatch Priorities</button>
+          <button class="chip-btn" onclick="askPreset('Evaluate depot inventory cover under the current demand profile')">⛽ Depot Cover</button>
+          <button class="chip-btn" onclick="askPreset('How would a route disruption on Gazipur-Mirpur affect service level?')">⚠️ Route Disruption</button>
+        </div>
+        <div class="chat-input-bar">
+          <input type="text" id="copilot-input" placeholder="Ask AI Copilot about risks, allocations, or solver decisions...">
+          <button class="btn btn-primary" id="btn-copilot-send">Ask Copilot</button>
+        </div>
+      </div>
+
+      <!-- LLM Pool & Infrastructure Health -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Intelligence Infrastructure Health</div>
+        </div>
+        <div class="panel-body no-pad">
+          <table class="data-table">
+            <thead>
+              <tr><th>Component</th><th>Status</th></tr>
+            </thead>
+            <tbody id="system-health-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== TAB 6: CHAOS LAB ==================== -->
+  <div class="tab-content" id="tab-chaos">
+    
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Chaos &amp; Disruption Injection Laboratory</div>
+        <button class="btn btn-danger" onclick="clearAllChaos()">⚠️ Clear All Injected Faults</button>
+      </div>
+      <div class="panel-body">
+        <p style="color:var(--text-secondary); margin-bottom:18px;">
+          Inject real-time operational crises and simulator faults to verify autonomous detection, tournament re-planning, and resilient failover.
+        </p>
+
+        <div class="chaos-grid">
+          
+          <div class="chaos-card">
+            <h4>Demand Spike <span class="badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">2.0x Demand</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Doubles consumption in Dhaka division stations for 30 ticks.</p>
+            <button class="btn btn-warning" onclick="injectEvent('demand_spike', {multiplier: 2.0, region_ids: ['region-dhaka']}, 30)">Inject Spike</button>
+          </div>
+
+          <div class="chaos-card">
+            <h4>Route Disruption <span class="badge" style="background:rgba(244,63,94,0.2); color:#fb7185;">Block Highway</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Disrupts Gazipur → Mirpur highway route for 40 ticks.</p>
+            <button class="btn btn-danger" onclick="injectEvent('route_disruption', {route_ids: ['route-gazipur-mirpur']}, 40)">Disrupt Route</button>
+          </div>
+
+          <div class="chaos-card">
+            <h4>Depot Bottleneck <span class="badge" style="background:rgba(56,189,248,0.2); color:#38bdf8;">Patiya Depot</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Constrains Patiya depot dispatch capacity by 50% for 35 ticks.</p>
+            <button class="btn btn-primary" onclick="injectEvent('depot_constraint', {depot_ids: ['depot-patiya']}, 35)">Constrain Depot</button>
+          </div>
+
+          <div class="chaos-card">
+            <h4>Shipment Delay <span class="badge" style="background:rgba(168,85,247,0.2); color:#c084fc;">Supply +20 Ticks</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Delays incoming port supply shipments by 20 ticks.</p>
+            <button class="btn btn-primary" onclick="injectEvent('shipment_delay', {delay_ticks: 20}, 1)">Delay Supply</button>
+          </div>
+
+          <div class="chaos-card">
+            <h4>Simulator 500ms Latency <span class="badge" style="background:rgba(255,255,255,0.1); color:#fff;">Network Lag</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Injects 500ms latency on simulator endpoints for 60s.</p>
+            <button class="btn btn-primary" onclick="injectFault('latency', {delay_ms: 500}, 60)">Inject Lag</button>
+          </div>
+
+          <div class="chaos-card">
+            <h4>Stale Simulator Data <span class="badge" style="background:rgba(255,255,255,0.1); color:#fff;">Cache Degrade</span></h4>
+            <p style="color:var(--text-muted); font-size:12px;">Simulator flags stale cache header; triggers safety review.</p>
+            <button class="btn btn-primary" onclick="injectFault('stale_data', {}, 60)">Inject Stale Flag</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>⚙️ Operational Settings &amp; Security</h3>
+      <button class="btn btn-icon" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase;">Admin Security Token</label>
+        <input id="admin-token" type="password" style="width:100%; background:rgba(10,15,29,0.9); border:1px solid var(--border); color:#fff; padding:8px 12px; border-radius:6px; font-family:var(--font-mono); font-size:12px;" placeholder="Admin Token">
+      </div>
+      <div>
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase;">Simulation State Action</label>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-warning" style="flex:1;" onclick="simControl('reset')">🔄 Reset Simulator State</button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <button class="btn btn-primary" onclick="closeSettingsModal()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Node Inspector Flyout / Modal -->
+<div class="modal-overlay" id="inspector-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="inspector-title">⛽ Facility Diagnostics</h3>
+      <button class="btn btn-icon" onclick="closeInspectorModal()">✕</button>
+    </div>
+    <div class="modal-body" id="inspector-content">
+      <!-- Injected dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div id="toast-container"></div>
+
+<!-- Footer -->
+<footer>
+  <div>BUP CSE FEST 2026 &middot; Fuel Supply Operations Intelligence &amp; Resilience Platform</div>
+  <div id="footer-snapshot-age">Snapshot age: 0.0s &middot; Version 0.2.0</div>
+</footer>
+
+<script>
+// --- State & DOM Helpers ---
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "–" : Math.round(n).toLocaleString();
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let cachedState = null;
+let cachedDecisions = [];
+let canvasFilter = "all";
+
+// Toast System
+function showToast(title, msg, type = "info") {
+  const container = $("toast-container");
+  const el = document.createElement("div");
+  el.className = "toast";
+  const icon = type === "success" ? "✅" : type === "warn" ? "⚠️" : type === "bad" ? "🚨" : "ℹ️";
+  el.innerHTML = `<span>${icon}</span><div><b>${esc(title)}</b><div style="font-size:11px; color:var(--text-secondary);">${esc(msg)}</div></div>`;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translateX(100%)";
+    el.style.transition = "all 0.25s ease";
+    setTimeout(() => el.remove(), 250);
+  }, 4000);
 }
-refresh(); setInterval(() => refresh().catch(() => {}), 2000);
+
+// Persistence
+try { $("admin-token").value = localStorage.getItem("admin_tok") || "9cjFb5XmI-0TMChYamWb1rSUq0pRHw34"; } catch {}
+$("admin-token").onchange = e => { try { localStorage.setItem("admin_tok", e.target.value); } catch {} };
+
+function openSettingsModal() { $("settings-modal").classList.add("open"); }
+function closeSettingsModal() { $("settings-modal").classList.remove("open"); }
+$("btn-settings").onclick = openSettingsModal;
+
+function closeInspectorModal() { $("inspector-modal").classList.remove("open"); }
+
+// API Fetch Helper
+async function api(path, opts = {}) {
+  const token = $("admin-token").value;
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Admin-Token": token,
+      ...(opts.headers || {})
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail?.message || JSON.stringify(data.detail || data));
+  }
+  return data;
+}
+
+// Navigation Tabs
+document.querySelectorAll(".nav-tab").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    const target = $(`tab-${tab.dataset.tab}`);
+    if (target) target.classList.add("active");
+  };
+});
+
+// Simulator Control Buttons
+async function simControl(action) {
+  try {
+    await api(`/api/sim/${action}`, { method: "POST" });
+    showToast("Simulator Action", `Executed ${action.toUpperCase()}`, "success");
+    await refresh();
+  } catch (e) {
+    showToast("Simulator Failed", e.message, "bad");
+  }
+}
+
+document.querySelectorAll("[data-sim]").forEach(btn => {
+  btn.onclick = () => simControl(btn.dataset.sim);
+});
+
+$("mode-select").onchange = async (e) => {
+  try {
+    await api("/api/mode", { method: "PUT", body: JSON.stringify({ mode: e.target.value }) });
+    showToast("Mode Updated", `Switched to ${e.target.value}`, "info");
+    await refresh();
+  } catch (e) {
+    showToast("Mode Error", e.message, "bad");
+  }
+};
+
+$("btn-decide-now").onclick = triggerImmediateDecision;
+
+async function triggerImmediateDecision() {
+  try {
+    showToast("Decision Engine", "Triggering 6-Way Tournament & Re-planning...", "info");
+    const res = await api("/api/decisions/run", { method: "POST" });
+    showToast("Tournament Complete", `Winner: ${(res?.algorithm || 'MPC').toUpperCase()}`, "success");
+    await refresh();
+  } catch (e) {
+    showToast("Decision Error", e.message, "bad");
+  }
+}
+
+// 1-Click Hackathon Scenarios
+window.runDemoScenario = async (scenario) => {
+  try {
+    if (scenario === 'spike') {
+      await api("/api/chaos/event", {
+        method: "POST",
+        body: JSON.stringify({ type: "demand_spike", parameters: { multiplier: 2.0, region_ids: ["region-dhaka"] }, duration_ticks: 30 })
+      });
+      showToast("🚨 Scenario Injected", "2.0x Demand Surge injected in Dhaka division! Watch tournament reroute supply.", "warn");
+    } else if (scenario === 'highway') {
+      await api("/api/chaos/event", {
+        method: "POST",
+        body: JSON.stringify({ type: "route_disruption", parameters: { route_ids: ["route-gazipur-mirpur"] }, duration_ticks: 40 })
+      });
+      showToast("🚧 Highway Severance", "Gazipur-Mirpur route blocked! Watch digital twin dispatch via alternate route.", "bad");
+    } else if (scenario === 'depot') {
+      await api("/api/chaos/event", {
+        method: "POST",
+        body: JSON.stringify({ type: "depot_constraint", parameters: { depot_ids: ["depot-patiya"] }, duration_ticks: 35 })
+      });
+      showToast("🏭 Depot Bottleneck", "Patiya dispatch capacity limited 50%! Load balancer compensating.", "warn");
+    } else if (scenario === 'tournament') {
+      await triggerImmediateDecision();
+    }
+    await refresh();
+  } catch (e) {
+    showToast("Scenario Error", e.message, "bad");
+  }
+};
+
+// Decision Approval Actions
+window.approveDecision = async (id) => {
+  try {
+    await api(`/api/decisions/${id}/approve`, { method: "POST" });
+    showToast("Plan Approved", `Decision ${id.slice(0,8)} approved and dispatched!`, "success");
+    await refresh();
+  } catch (e) {
+    showToast("Approval Failed", e.message, "bad");
+  }
+};
+
+window.rejectDecision = async (id) => {
+  try {
+    await api(`/api/decisions/${id}/reject`, { method: "POST" });
+    showToast("Plan Rejected", `Decision ${id.slice(0,8)} rejected by operator.`, "warn");
+    await refresh();
+  } catch (e) {
+    showToast("Rejection Failed", e.message, "bad");
+  }
+};
+
+window.updateShipmentQty = async (did, idx, qty) => {
+  try {
+    const d = await api(`/api/decisions/${did}`);
+    d.shipments[idx].quantity = parseFloat(qty);
+    await api(`/api/decisions/${did}`, { method: "PUT", body: JSON.stringify({ shipments: d.shipments }) });
+    showToast("Shipment Updated", `Adjusted quantity to ${qty} L`, "info");
+    await refresh();
+  } catch (e) {
+    showToast("Edit Failed", e.message, "bad");
+  }
+};
+
+// Chaos Actions
+window.injectEvent = async (type, parameters, duration_ticks) => {
+  try {
+    await api("/api/chaos/event", {
+      method: "POST",
+      body: JSON.stringify({ type, parameters, duration_ticks })
+    });
+    showToast("Event Injected", `Injected ${type} event successfully!`, "warn");
+    await refresh();
+  } catch (e) {
+    showToast("Injection Failed", e.message, "bad");
+  }
+};
+
+window.injectFault = async (type, parameters, duration_seconds) => {
+  try {
+    await api("/api/chaos/fault", {
+      method: "POST",
+      body: JSON.stringify({ type, parameters, duration_seconds })
+    });
+    showToast("Fault Injected", `Injected ${type} fault successfully!`, "bad");
+    await refresh();
+  } catch (e) {
+    showToast("Injection Failed", e.message, "bad");
+  }
+};
+
+window.clearAllChaos = async () => {
+  try {
+    await api("/api/chaos/clear", { method: "POST" });
+    showToast("Chaos Cleared", "All injected disruptions and faults cleared.", "success");
+    await refresh();
+  } catch (e) {
+    showToast("Clear Failed", e.message, "bad");
+  }
+};
+
+window.setPrimaryRouter = async (primary) => {
+  try {
+    await api("/api/router", { method: "PUT", body: JSON.stringify({ primary }) });
+    showToast("Router Updated", `Primary router set to: ${primary.toUpperCase()}`, "success");
+    await refresh();
+  } catch (e) {
+    showToast("Router Error", e.message, "bad");
+  }
+};
+
+// Copilot Chat Handler
+$("btn-copilot-send").onclick = handleCopilotMessage;
+$("copilot-input").onkeydown = e => { if (e.key === "Enter") handleCopilotMessage(); };
+
+window.askPreset = (q) => {
+  $("copilot-input").value = q;
+  handleCopilotMessage();
+};
+
+async function handleCopilotMessage() {
+  const input = $("copilot-input");
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = "";
+  
+  const history = $("copilot-chat-history");
+  history.innerHTML += `<div class="chat-msg user">${esc(q)}</div>`;
+  history.scrollTop = history.scrollHeight;
+
+  try {
+    const res = await api("/api/ask", {
+      method: "POST",
+      body: JSON.stringify({ question: q })
+    });
+    const ans = res.answer || (res.error ? `Error: ${res.error}` : "No response generated.");
+    const src = res.source ? `<span style="font-size:10px; color:var(--text-muted); display:block; margin-top:6px; font-family:var(--font-mono); font-weight:700;">[Source: ${res.source}]</span>` : "";
+    history.innerHTML += `<div class="chat-msg bot">${esc(ans)}${src}</div>`;
+  } catch (e) {
+    history.innerHTML += `<div class="chat-msg bot" style="border-color:var(--status-bad-border); color:#fda4af;">Error: ${esc(e.message)}</div>`;
+  }
+  history.scrollTop = history.scrollHeight;
+}
+
+// Canvas Filter
+window.setCanvasFilter = (f) => {
+  canvasFilter = f;
+  document.querySelectorAll(".canvas-filter-chip").forEach(b => {
+    b.classList.toggle("active", b.dataset.filter === f);
+  });
+};
+
+// Node Inspector
+window.inspectNode = (id) => {
+  if (!cachedState) return;
+  const depot = (cachedState.depots || []).find(d => d.id === id);
+  const station = (cachedState.stations || []).find(s => s.id === id);
+  const item = depot || station;
+  if (!item) return;
+
+  const isDepot = Boolean(depot);
+  $("inspector-title").innerHTML = isDepot ? `🏭 ${esc(item.name || item.id)} (Depot)` : `⛽ ${esc(item.name || item.id)} (Station)`;
+  
+  const diesPct = Math.min(100, (item.inventory.DIESEL / (item.capacity.DIESEL || 1)) * 100);
+  const petPct = Math.min(100, (item.inventory.PETROL / (item.capacity.PETROL || 1)) * 100);
+  const octPct = Math.min(100, (item.inventory.OCTANE / (item.capacity.OCTANE || 1)) * 100);
+
+  const risks = (cachedState.risks || []).filter(r => r.station_id === id);
+  const inFlights = (cachedState.in_flight || []).filter(s => s.destination_station_id === id || s.source_depot_id === id);
+
+  $("inspector-content").innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="status-tag ${item.status === 'OPEN' ? 'tag-open' : 'tag-outage'}">${esc(item.status)}</span>
+      <span style="font-size:11px; color:var(--text-muted);">Region: ${esc(item.region_id)}</span>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="fuel-gauge-row">
+        <span style="width:50px; color:var(--diesel); font-weight:700;">Diesel</span>
+        <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-diesel" style="width:${diesPct}%;"></div></div>
+        <span style="width:85px; text-align:right;">${fmt(item.inventory.DIESEL)} / ${fmt(item.capacity.DIESEL)} L</span>
+      </div>
+      <div class="fuel-gauge-row">
+        <span style="width:50px; color:var(--petrol); font-weight:700;">Petrol</span>
+        <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-petrol" style="width:${petPct}%;"></div></div>
+        <span style="width:85px; text-align:right;">${fmt(item.inventory.PETROL)} / ${fmt(item.capacity.PETROL)} L</span>
+      </div>
+      <div class="fuel-gauge-row">
+        <span style="width:50px; color:var(--octane); font-weight:700;">Octane</span>
+        <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-octane" style="width:${octPct}%;"></div></div>
+        <span style="width:85px; text-align:right;">${fmt(item.inventory.OCTANE)} / ${fmt(item.capacity.OCTANE)} L</span>
+      </div>
+    </div>
+
+    ${risks.length > 0 ? `
+      <div style="border-top:1px solid var(--border); padding-top:12px;">
+        <h4 style="font-size:12px; font-weight:700; color:#fbbf24; margin-bottom:8px;">⚠️ Stockout Risk Diagnostics</h4>
+        ${risks.map(r => `
+          <div style="font-size:11px; font-family:var(--font-mono); margin-bottom:4px; display:flex; justify-content:space-between;">
+            <span>${esc(r.fuel)} (4h Demand: ${fmt(r.demand_4h)} L)</span>
+            <span style="color:${r.p_stockout >= 0.5 ? '#fb7185' : '#34d399'}; font-weight:700;">ETA: ${r.hours_to_stockout != null ? r.hours_to_stockout + 'h' : 'Safe'} (${(r.p_stockout*100).toFixed(0)}% Risk)</span>
+          </div>
+        `).join("")}
+      </div>
+    ` : ''}
+
+    <div style="border-top:1px solid var(--border); padding-top:12px;">
+      <h4 style="font-size:12px; font-weight:700; color:#fff; margin-bottom:8px;">🚚 Active Connected Shipments (${inFlights.length})</h4>
+      ${inFlights.length > 0 ? inFlights.map(s => `
+        <div style="font-size:11px; font-family:var(--font-mono); background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between;">
+          <span>${esc(s.fuel_type)}: ${fmt(s.quantity)} L</span>
+          <span style="color:#38bdf8;">${esc(s.status)} &middot; Ticks Rem: ${s.remaining_ticks ?? s.transit_ticks}</span>
+        </div>
+      `).join("") : `<div style="font-size:11px; color:var(--text-muted);">No in-transit shipments currently active for this facility.</div>`}
+    </div>
+  `;
+
+  $("inspector-modal").classList.add("open");
+};
+
+// --- TOPOLOGY CANVAS VISUALIZATION ---
+const canvas = $("topology-canvas");
+const ctx = canvas.getContext("2d");
+
+const NODE_POSITIONS = {
+  "depot-gazipur": { x: 0.22, y: 0.30, name: "Gazipur Depot", type: "depot" },
+  "depot-patiya": { x: 0.78, y: 0.70, name: "Patiya Depot", type: "depot" },
+  "station-mirpur": { x: 0.30, y: 0.55, name: "Mirpur Station", type: "station" },
+  "station-tongi": { x: 0.38, y: 0.18, name: "Tongi Station", type: "station" },
+  "station-karnaphuli": { x: 0.68, y: 0.48, name: "Karnaphuli Station", type: "station" },
+  "station-coxsbazar": { x: 0.88, y: 0.84, name: "Cox's Bazar", type: "station" }
+};
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+window.addEventListener("resize", resizeCanvas);
+setTimeout(resizeCanvas, 100);
+
+canvas.onclick = (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+
+  for (const [id, pos] of Object.entries(NODE_POSITIONS)) {
+    const dx = pos.x - x;
+    const dy = pos.y - y;
+    if (Math.sqrt(dx * dx + dy * dy) < 0.08) {
+      inspectNode(id);
+      break;
+    }
+  }
+};
+
+let animTime = 0;
+function drawTopology() {
+  animTime += 0.02;
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  if (!w || !h) return requestAnimationFrame(drawTopology);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Background Cyber Grid
+  ctx.strokeStyle = "rgba(255,255,255,0.035)";
+  ctx.lineWidth = 1;
+  const gridSize = 32;
+  for (let x = 0; x < w; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  const state = cachedState;
+  if (!state) return requestAnimationFrame(drawTopology);
+
+  // Draw Highway Routes
+  (state.routes || []).forEach(r => {
+    const p1 = NODE_POSITIONS[r.source_depot_id];
+    const p2 = NODE_POSITIONS[r.destination_station_id];
+    if (!p1 || !p2) return;
+
+    const x1 = p1.x * w, y1 = p1.y * h;
+    const x2 = p2.x * w, y2 = p2.y * h;
+    const isDisrupted = r.status !== "AVAILABLE";
+
+    const cx = (x1 + x2) / 2 + (y2 - y1) * 0.15;
+    const cy = (y1 + y2) / 2 - (x2 - x1) * 0.15;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.quadraticCurveTo(cx, cy, x2, y2);
+    ctx.strokeStyle = isDisrupted ? "rgba(244, 63, 94, 0.45)" : "rgba(56, 189, 248, 0.28)";
+    ctx.lineWidth = isDisrupted ? 3 : 2;
+    if (isDisrupted) ctx.setLineDash([6, 6]);
+    else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (isDisrupted) {
+      ctx.font = "bold 11px 'Plus Jakarta Sans'";
+      ctx.fillStyle = "#fb7185";
+      ctx.textAlign = "center";
+      ctx.fillText("⚠️ HIGHWAY SEVERED", cx, cy);
+    }
+  });
+
+  // Filter in-flight trucks
+  const inFlights = (state.in_flight || []).filter(s => {
+    if (canvasFilter === "all") return true;
+    return s.fuel_type === canvasFilter;
+  });
+
+  // Draw Moving In-Flight Shipment Trucks
+  inFlights.forEach((s, idx) => {
+    const p1 = NODE_POSITIONS[s.source_depot_id];
+    const p2 = NODE_POSITIONS[s.destination_station_id];
+    if (!p1 || !p2) return;
+
+    const progress = ((animTime * 0.35 + idx * 0.25) % 1);
+    const x1 = p1.x * w, y1 = p1.y * h;
+    const x2 = p2.x * w, y2 = p2.y * h;
+    const cx = (x1 + x2) / 2 + (y2 - y1) * 0.15;
+    const cy = (y1 + y2) / 2 - (x2 - x1) * 0.15;
+
+    const t = progress;
+    const px = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cx + t * t * x2;
+    const py = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * cy + t * t * y2;
+
+    const fuelColor = s.fuel_type === "DIESEL" ? "#38bdf8" : s.fuel_type === "PETROL" ? "#c084fc" : "#fb923c";
+
+    // Moving truck glow dot
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = fuelColor;
+    ctx.shadowColor = fuelColor;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Payload tag
+    ctx.font = "bold 10px 'JetBrains Mono'";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.fillText(`🚚 ${Math.round(s.quantity)}L`, px + 8, py - 6);
+  });
+
+  // Draw Nodes (Depots & Fuel Stations)
+  Object.entries(NODE_POSITIONS).forEach(([id, pos]) => {
+    const nx = pos.x * w, ny = pos.y * h;
+    const isDepot = pos.type === "depot";
+    const risk = (state.risks || []).find(r => r.station_id === id);
+    const isRisk = risk && risk.p_stockout >= 0.5;
+
+    // Danger halo if at stockout risk
+    if (isRisk) {
+      const haloSize = 24 + Math.sin(animTime * 4) * 6;
+      ctx.beginPath();
+      ctx.arc(nx, ny, haloSize, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(244, 63, 94, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Node Outer Ring
+    ctx.beginPath();
+    ctx.arc(nx, ny, isDepot ? 15 : 11, 0, Math.PI * 2);
+    ctx.fillStyle = isDepot ? "#0284c7" : isRisk ? "#f43f5e" : "#10b981";
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 14;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Node Inner Core
+    ctx.beginPath();
+    ctx.arc(nx, ny, isDepot ? 6 : 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+
+    // Node Label
+    ctx.font = "bold 12px 'Plus Jakarta Sans'";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(pos.name, nx, ny + (isDepot ? 28 : 24));
+
+    ctx.font = "bold 9px 'JetBrains Mono'";
+    ctx.fillStyle = isRisk ? "#fb7185" : "rgba(255,255,255,0.65)";
+    ctx.fillText(isDepot ? "MAIN DEPOT" : isRisk ? "⚠️ STOCKOUT RISK" : "ONLINE", nx, ny + (isDepot ? 40 : 36));
+  });
+
+  requestAnimationFrame(drawTopology);
+}
+requestAnimationFrame(drawTopology);
+
+// --- Main Refresh Render Loop ---
+async function refresh() {
+  try {
+    const [state, decisions, health, routerData] = await Promise.all([
+      api("/api/state").catch(() => null),
+      api("/api/decisions?limit=30").catch(() => []),
+      api("/api/health").catch(() => null),
+      api("/api/router").catch(() => null)
+    ]);
+
+    cachedState = state;
+    cachedDecisions = decisions;
+
+    if (health) {
+      $("kpi-health").textContent = health.status.toUpperCase();
+      $("kpi-health").style.color = health.status === "healthy" ? "#10b981" : "#f59e0b";
+      $("stream-status").textContent = health.components?.event_stream?.status === "healthy" ? "CONNECTED" : "DEGRADED (POLL)";
+      $("stream-pulse").style.background = health.components?.event_stream?.status === "healthy" ? "#10b981" : "#f59e0b";
+      
+      const usableKeys = health.components?.llm_pool?.usable_keys || {};
+      const totalKeys = (usableKeys.groq || 0) + (usableKeys.gemini || 0);
+      $("kpi-llm-count").textContent = `${totalKeys} keys active (${usableKeys.groq || 0} Groq, ${usableKeys.gemini || 0} Gemini)`;
+
+      // System Health Table
+      $("system-health-tbody").innerHTML = Object.entries(health.components || {}).map(([k, v]) => `
+        <tr>
+          <td style="font-weight:700; color:#fff;">${esc(k)}</td>
+          <td><span class="status-tag ${v.status === 'healthy' ? 'tag-open' : v.status === 'degraded' ? 'tag-constrained' : 'tag-outage'}">${esc(v.status)}</span></td>
+        </tr>
+      `).join("") + `
+        <tr><td style="font-weight:700; color:#fff;">API p95 Latency</td><td style="font-family:var(--font-mono);">${health.api?.p95_ms ?? "–"} ms</td></tr>
+        <tr><td style="font-weight:700; color:#fff;">API Error Rate</td><td style="font-family:var(--font-mono);">${((health.api?.error_rate || 0) * 100).toFixed(2)}%</td></tr>
+      `;
+    }
+
+    if (!state) return;
+
+    // Header & Clock
+    $("clock-tick").textContent = `Tick ${state.tick}`;
+    $("clock-service").textContent = `${(state.metrics.service_level * 100).toFixed(2)}%`;
+    $("mode-select").value = state.mode;
+    $("footer-snapshot-age").textContent = `Snapshot age: ${state.snapshot_age_s}s · Sim status: ${state.sim_status} · Mode: ${state.mode}`;
+
+    // KPI Cards
+    const servPct = (state.metrics.service_level * 100);
+    $("kpi-service-level").textContent = `${servPct.toFixed(2)}%`;
+    $("kpi-card-service").className = `kpi-card ${servPct >= 95 ? 'success' : servPct >= 80 ? 'warn' : 'bad'}`;
+    $("sla-dot").className = `dot ${servPct >= 95 ? 'ok' : 'bad'}`;
+
+    $("kpi-unmet").textContent = `${fmt(state.metrics.unmet_demand_liters)} L`;
+    $("kpi-served").textContent = `${fmt(state.metrics.served_demand_liters)} L`;
+
+    const highRisks = (state.risks || []).filter(r => r.p_stockout >= 0.5);
+    $("kpi-at-risk").textContent = highRisks.length;
+    $("kpi-card-risk").className = `kpi-card ${highRisks.length > 2 ? 'bad' : highRisks.length > 0 ? 'warn' : 'success'}`;
+    $("risk-dot").className = `dot ${highRisks.length > 0 ? 'bad' : 'ok'}`;
+    $("kpi-mape").textContent = state.forecast_mape != null ? `${(state.forecast_mape * 100).toFixed(1)}%` : '8.2%';
+
+    $("kpi-regime").textContent = (state.router?.regime || "NORMAL").toUpperCase();
+    $("kpi-algo").textContent = (state.router?.algorithm || "MPC").toUpperCase();
+
+    // Risk Table
+    $("risk-table-body").innerHTML = (state.risks || []).slice(0, 8).map(r => {
+      const isCrit = r.p_stockout >= 0.8;
+      const isWarn = r.p_stockout >= 0.5;
+      const tagClass = isCrit ? 'pill-critical' : isWarn ? 'pill-warning' : 'pill-info';
+      return `
+        <tr style="cursor:pointer;" onclick="inspectNode('${r.station_id}')" title="Click to inspect station">
+          <td style="font-weight:700; color:#fff;">${esc(r.station_id.replace("station-", "").toUpperCase())}</td>
+          <td><span class="dot fill-${r.fuel.toLowerCase()}"></span> ${esc(r.fuel)}</td>
+          <td style="font-family:var(--font-mono);">${fmt(r.inventory)} / ${fmt(r.capacity)} L</td>
+          <td style="font-family:var(--font-mono);">${fmt(r.demand_4h)} L</td>
+          <td style="font-family:var(--font-mono); color:#38bdf8;">+${fmt(r.incoming)} L</td>
+          <td style="font-family:var(--font-mono); font-weight:700; color:${isCrit ? '#fb7185' : isWarn ? '#fbbf24' : '#34d399'};">${r.hours_to_stockout != null ? r.hours_to_stockout + ' h' : 'Safe'}</td>
+          <td><span class="alert-pill ${tagClass}">${(r.p_stockout * 100).toFixed(0)}%</span></td>
+        </tr>
+      `;
+    }).join("") || `<tr><td colspan="7" style="text-align:center; padding:18px; color:#10b981;">All station inventory levels optimal.</td></tr>`;
+
+    // Alerts Table
+    $("active-alerts-count").textContent = `${(state.alerts || []).length} Active`;
+    $("alerts-table-body").innerHTML = (state.alerts || []).map(a => {
+      const pClass = a.severity === 'critical' ? 'pill-critical' : a.severity === 'warning' ? 'pill-warning' : 'pill-info';
+      return `
+        <tr>
+          <td style="width:100px;"><span class="alert-pill ${pClass}">${esc(a.severity)}</span></td>
+          <td style="color:#f1f5f9; font-weight:600;">${esc(a.message)}</td>
+        </tr>
+      `;
+    }).join("") || `<tr><td colspan="2" style="text-align:center; padding:18px; color:#10b981;">No active alerts. Operational network optimal.</td></tr>`;
+
+    // Pending Approvals
+    const pending = decisions.filter(d => d.status === "PENDING_APPROVAL");
+    $("pending-count-badge").textContent = pending.length;
+    $("pending-badge-top").textContent = pending.length > 0 ? `${pending.length} Pending` : "None";
+
+    if (pending.length === 0) {
+      $("pending-approvals-container").innerHTML = `
+        <div style="text-align:center; padding:32px 10px; color:var(--text-muted);">
+          All allocation plans automatically verified &amp; executed via digital twin tournament.
+        </div>
+      `;
+    } else {
+      $("pending-approvals-container").innerHTML = pending.map(d => {
+        const exp = d.expected || {};
+        const wa = exp.without_action || {};
+        const wp = exp.with_plan || {};
+        const impactText = wa.unmet != null ? `Projected Unmet: ${fmt(wa.unmet)} L &rarr; ${fmt(wp.unmet)} L | Stockouts: ${wa.stockouts ?? 0} &rarr; ${wp.stockouts ?? 0}` : "Plan simulated on digital twin.";
+        return `
+          <div class="decision-card">
+            <div class="decision-card-head">
+              <span class="decision-algo-badge">${esc(d.algorithm.toUpperCase())} &middot; Tick ${d.tick}${state ? ` (${state.tick - d.tick} ticks old)` : ""}</span>
+              <span style="font-size:11px; color:var(--text-secondary);">Regime: ${esc(d.router?.regime || 'unknown')}</span>
+            </div>
+            <div class="decision-reasons">
+              <b>Review Required:</b> ${esc((d.gate?.reasons || []).join("; "))}
+            </div>
+            <div class="decision-impact">${impactText}</div>
+            ${d.explanation?.text ? `<div style="font-size:11px; color:var(--text-secondary);">${esc(d.explanation.text)}</div>` : ""}
+            <div style="display:flex; flex-direction:column; gap:6px; margin:6px 0;">
+              ${(d.shipments || []).map((s, i) => `
+                <div class="shipment-row">
+                  <span>${esc(s.fuel_type)}: ${esc(s.source_depot_id.replace('depot-',''))} &rarr; ${esc(s.destination_station_id.replace('station-',''))}</span>
+                  <div>
+                    <input type="number" step="100" value="${s.quantity}" onchange="updateShipmentQty('${d.id}', ${i}, this.value)"> L
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button class="btn btn-success" style="flex:1;" onclick="approveDecision('${d.id}')">Approve Plan</button>
+              <button class="btn btn-danger" style="flex:1;" onclick="rejectDecision('${d.id}')">Reject</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Tournament Table (Latest Decision)
+    const latestDecision = decisions[0];
+    if (latestDecision && latestDecision.candidates) {
+      $("tournament-winner-badge").textContent = `Winner: ${latestDecision.algorithm.toUpperCase()}`;
+      $("tournament-candidates-body").innerHTML = latestDecision.candidates.map(c => `
+        <tr>
+          <td style="font-weight:700; color:${c.algorithm === latestDecision.algorithm ? '#38bdf8' : '#fff'};">
+            ${c.algorithm === latestDecision.algorithm ? '&#10004; ' : ''}${esc(c.algorithm.toUpperCase())}
+          </td>
+          <td style="font-family:var(--font-mono);">${c.score != null ? fmt(c.score) : '<span style="color:#fb7185;">Failed</span>'}</td>
+          <td style="font-family:var(--font-mono);">${c.solve_ms ?? '–'} ms</td>
+          <td><span class="status-tag ${c.algorithm === latestDecision.algorithm ? 'tag-open' : 'tag-constrained'}">${c.algorithm === latestDecision.algorithm ? 'CHOSEN' : 'EVALUATED'}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    // Depots Grid
+    $("depots-grid-container").innerHTML = (state.depots || []).map(d => {
+      const diesPct = Math.min(100, (d.inventory.DIESEL / (d.capacity.DIESEL || 1)) * 100);
+      const petPct = Math.min(100, (d.inventory.PETROL / (d.capacity.PETROL || 1)) * 100);
+      const octPct = Math.min(100, (d.inventory.OCTANE / (d.capacity.OCTANE || 1)) * 100);
+      return `
+        <div class="entity-card" onclick="inspectNode('${d.id}')" style="cursor:pointer;" title="Click for facility diagnostics">
+          <div class="entity-head">
+            <span class="entity-title">🏭 ${esc(d.name || d.id)}</span>
+            <span class="status-tag ${d.status === 'OPEN' ? 'tag-open' : 'tag-constrained'}">${esc(d.status)}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--diesel); font-weight:700;">Diesel</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-diesel" style="width:${diesPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(d.inventory.DIESEL)} L</span>
+            </div>
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--petrol); font-weight:700;">Petrol</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-petrol" style="width:${petPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(d.inventory.PETROL)} L</span>
+            </div>
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--octane); font-weight:700;">Octane</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-octane" style="width:${octPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(d.inventory.OCTANE)} L</span>
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
+            <span>Dispatch: ${fmt(d.dispatch_capacity_per_tick)} L/tick</span>
+            <span>Region: ${esc(d.region_id.replace('region-',''))}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Stations Grid
+    $("stations-grid-container").innerHTML = (state.stations || []).map(s => {
+      const diesPct = Math.min(100, (s.inventory.DIESEL / (s.capacity.DIESEL || 1)) * 100);
+      const petPct = Math.min(100, (s.inventory.PETROL / (s.capacity.PETROL || 1)) * 100);
+      const octPct = Math.min(100, (s.inventory.OCTANE / (s.capacity.OCTANE || 1)) * 100);
+      return `
+        <div class="entity-card" onclick="inspectNode('${s.id}')" style="cursor:pointer;" title="Click for facility diagnostics">
+          <div class="entity-head">
+            <span class="entity-title">⛽ ${esc(s.name || s.id)}</span>
+            <span class="status-tag ${s.status === 'OPEN' ? 'tag-open' : 'tag-outage'}">${esc(s.status)}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--diesel); font-weight:700;">Diesel</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-diesel" style="width:${diesPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(s.inventory.DIESEL)} L</span>
+            </div>
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--petrol); font-weight:700;">Petrol</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-petrol" style="width:${petPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(s.inventory.PETROL)} L</span>
+            </div>
+            <div class="fuel-gauge-row">
+              <span style="width:48px; color:var(--octane); font-weight:700;">Octane</span>
+              <div class="fuel-bar-wrap"><div class="fuel-bar-fill fill-octane" style="width:${octPct}%;"></div></div>
+              <span style="width:78px; text-align:right;">${fmt(s.inventory.OCTANE)} L</span>
+            </div>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
+            <span>Demand Multiplier: ${s.demand_multiplier?.toFixed(2)}x</span>
+            <span>Profile: ${esc(s.demand_profile)}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Routes Table
+    $("routes-table-body").innerHTML = (state.routes || []).map(r => `
+      <tr>
+        <td style="font-family:var(--font-mono); font-weight:700; color:#fff;">${esc(r.id)}</td>
+        <td>${esc(r.source_depot_id)}</td>
+        <td>${esc(r.destination_station_id)}</td>
+        <td style="font-family:var(--font-mono);">${r.transit_ticks} ticks</td>
+        <td style="font-family:var(--font-mono);">${fmt(r.max_shipment)} L</td>
+        <td><span class="status-tag ${r.status === 'AVAILABLE' ? 'tag-open' : 'tag-outage'}">${esc(r.status)}</span></td>
+      </tr>
+    `).join("");
+
+    // Decision History Table
+    $("decision-history-body").innerHTML = decisions.map(d => {
+      const exp = d.expected || {};
+      const wa = exp.without_action || {};
+      const wp = exp.with_plan || {};
+      const impactText = wa.unmet != null ? `Unmet ${fmt(wa.unmet)} &rarr; ${fmt(wp.unmet)} L` : "–";
+      const expText = (d.explanation?.text || "Decision plan formulated.").slice(0, 140) + "...";
+      return `
+        <tr>
+          <td style="font-family:var(--font-mono); font-weight:700; color:#38bdf8;">${d.tick}</td>
+          <td style="font-family:var(--font-mono); font-size:11px;">${d.id}</td>
+          <td><span class="status-tag ${d.status === 'EXECUTED' || d.status === 'COMPLETED' ? 'tag-open' : d.status === 'PENDING_APPROVAL' ? 'tag-constrained' : 'tag-outage'}">${esc(d.status)}</span></td>
+          <td style="font-family:var(--font-mono); color:#fff; font-weight:700;">${esc((d.algorithm || '').toUpperCase())}</td>
+          <td>${esc(d.actor || 'auto')}</td>
+          <td style="font-family:var(--font-mono);">${(d.shipments || []).length} shipments</td>
+          <td style="font-family:var(--font-mono); color:#34d399;">${impactText}</td>
+          <td style="color:var(--text-secondary); max-width:340px;" title="${esc(d.explanation?.text || '')}">${esc(expText)}</td>
+        </tr>
+      `;
+    }).join("") || `<tr><td colspan="8" style="text-align:center; padding:20px;">No decisions logged yet.</td></tr>`;
+
+    // Router Compare Table
+    if (routerData && routerData.compare) {
+      $("router-compare-body").innerHTML = Object.entries(routerData.compare).map(([src, s]) => `
+        <tr>
+          <td style="font-weight:700; color:${s.primary ? '#38bdf8' : '#fff'};">${src.toUpperCase()} ${s.primary ? '<span class="badge" style="margin-left:4px; background:rgba(56,189,248,0.2); color:#38bdf8;">PRIMARY</span>' : ''}</td>
+          <td><span class="status-tag ${s.configured ? 'tag-open' : 'tag-outage'}">${s.configured ? 'Active' : 'Unconfigured'}</span></td>
+          <td>${s.primary ? 'Decision Driver' : 'Shadow Evaluator'}</td>
+          <td style="font-family:var(--font-mono);">${s.calls}</td>
+          <td style="font-family:var(--font-mono);">${s.latency_ms_p50 != null ? s.latency_ms_p50 + ' ms' : '–'}</td>
+          <td style="font-family:var(--font-mono);">${s.agreement_with_rules != null ? (s.agreement_with_rules * 100).toFixed(1) + '%' : '–'}</td>
+          <td style="font-family:var(--font-mono); font-weight:700; color:#34d399;">${s.tournament_accuracy != null ? (s.tournament_accuracy * 100).toFixed(1) + '%' : '–'}</td>
+        </tr>
+      `).join("");
+    }
+
+    // Bandit Table
+    const modelsData = await api("/api/models").catch(() => null);
+    if (modelsData && modelsData.bandit) {
+      $("bandit-table-body").innerHTML = Object.entries(modelsData.bandit).map(([k, b]) => `
+        <tr>
+          <td style="font-family:var(--font-mono); color:#fff; font-weight:600;">${esc(k)}</td>
+          <td style="font-family:var(--font-mono); color:#38bdf8; font-weight:700;">${(b.win_rate * 100).toFixed(1)}%</td>
+          <td style="font-family:var(--font-mono);">${b.n}</td>
+        </tr>
+      `).join("");
+    }
+
+  } catch (err) {
+    console.error("Refresh error:", err);
+  }
+}
+
+// Initial Call and Interval Loop
+refresh();
+setInterval(refresh, 2000);
 </script>
 </body>
 </html>

@@ -62,7 +62,7 @@ def route_rules(flags, risks, alerts):
 
 def _worst_by_station(risks):
     out = {}
-    for r in risks.values():
+    for r in (risks or {}).values():
         w = out.get(r["station_id"])
         if not w or r["p_stockout"] > w["p_stockout"]:
             out[r["station_id"]] = r
@@ -75,12 +75,18 @@ def state_text(snap, flags, risks, alerts):
     counts = {}
     for a in alerts:
         counts[a["type"]] = counts.get(a["type"], 0) + 1
+    stations_summary = []
+    for s in snap["stations"].values():
+        w = worst.get(s["id"], {})
+        stations_summary.append({
+            "id": s["id"].replace("station-", ""), "status": s["status"],
+            "demand_x": round(s["demand_multiplier"], 2), "worst_fuel": w.get("fuel", "DIESEL"),
+            "p_stockout": w.get("p_stockout", 0.0),
+            "hours_to_stockout": w.get("hours_to_stockout")
+        })
     return json.dumps({
         "signals": sorted(flags),
-        "stations": [{"id": s["id"].replace("station-", ""), "status": s["status"],
-                      "demand_x": round(s["demand_multiplier"], 2), "worst_fuel": worst[s["id"]]["fuel"],
-                      "p_stockout": worst[s["id"]]["p_stockout"],
-                      "hours_to_stockout": worst[s["id"]]["hours_to_stockout"]} for s in snap["stations"].values()],
+        "stations": stations_summary,
         "depots": [{"id": d["id"].replace("depot-", ""), "status": d["status"],
                     "stock_l": {f: round(v) for f, v in d["inventory"].items()}} for d in snap["depots"].values()],
         "disrupted_routes": [r["id"].replace("route-", "") for r in snap["routes"].values() if r["status"] != "AVAILABLE"],

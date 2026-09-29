@@ -12,13 +12,16 @@ def dispatch_used(snap, depot_id):
 
 def depot_cover(snap, paths, depot_id, fuel):
     """Ticks the depot can feed its home-region stations before the next supply arrival (None = fine)."""
-    d = snap["depots"][depot_id]
-    home = [s for s in snap["stations"].values() if s["region_id"] == d["region_id"]]
-    rate = sum(float(np.mean(paths[(s["id"], fuel)])) for s in home) or 1e-6
-    nxt = min((a["planned_tick"] for a in snap["supply"]
-               if a["depot_id"] == depot_id and a["fuel_type"] == fuel and a["status"] != "ARRIVED"), default=None)
+    d = snap["depots"].get(depot_id)
+    if not d:
+        return 96.0, 96
+    home = [s for s in snap["stations"].values() if s.get("region_id") == d.get("region_id")]
+    rates = [float(np.mean(paths[(s["id"], fuel)])) for s in home if paths and (s["id"], fuel) in paths]
+    rate = sum(rates) or 1e-6
+    nxt = min((a["planned_tick"] for a in snap.get("supply", [])
+               if a.get("depot_id") == depot_id and a.get("fuel_type") == fuel and a.get("status") != "ARRIVED"), default=None)
     need_ticks = (nxt - snap["tick"]) if nxt is not None else 96
-    cover = d["inventory"][fuel] / rate
+    cover = d["inventory"].get(fuel, 0.0) / rate
     return cover, need_ticks
 
 
@@ -56,13 +59,15 @@ class Detector:
                                     "tick": snap["tick"], **extra}
 
         flags = set()
-        for (sid, f), r in risks.items():
-            if r["p_stockout"] >= 0.8 and (r["hours_to_stockout"] or 99) < 4:
-                add("stockout_risk", f"{sid}/{f}", "critical", f"{sid} {f}: stockout in {r['hours_to_stockout']}h "
-                    f"(p={r['p_stockout']:.0%})", signals=r["signals"])
+        for (sid, f), r in (risks or {}).items():
+            hts = r.get("hours_to_stockout")
+            hts_val = hts if hts is not None else 99
+            if r["p_stockout"] >= 0.8 and hts_val < 4:
+                add("stockout_risk", f"{sid}/{f}", "critical", f"{sid} {f}: stockout in {hts}h "
+                    f"(p={r['p_stockout']:.0%})", signals=r.get("signals", []))
             elif r["p_stockout"] >= 0.5:
                 add("stockout_risk", f"{sid}/{f}", "warning", f"{sid} {f}: p(stockout)={r['p_stockout']:.0%}",
-                    signals=r["signals"])
+                    signals=r.get("signals", []))
         for s in snap["stations"].values():
             if s["status"] != "OPEN":
                 add("station_outage", s["id"], "critical", f"{s['id']} is {s['status']}")
@@ -76,7 +81,7 @@ class Detector:
                     flags.add("demand_spike")
         for s in snap["stations"].values():  # A16: the binding constraint in this world is route redundancy
             usable = [r for r in snap["routes"].values() if r["destination_station_id"] == s["id"] and r["status"] == "AVAILABLE"]
-            worst = max((risks[(s["id"], f)]["p_stockout"] for f in FUELS), default=0)
+            worst = max((risks.get((s["id"], f), {}).get("p_stockout", 0) for f in FUELS), default=0)
             if s["status"] == "OPEN" and len(usable) <= 1 and worst >= 0.3:
                 only = usable[0]["id"] if usable else "none"
                 add("bottleneck", s["id"], "critical" if not usable else "warning",
@@ -109,16 +114,19 @@ class Detector:
         if prev and snap["tick"] == prev["tick"] + 1:
             arrived = {}
             for a in snap["allocations"]:
-                if a["actual_arrival_tick"] == snap["tick"]:
+                if a.get("actual_arrival_tick") == snap["tick"]:
                     k = (a["destination_station_id"], a["fuel_type"])
                     arrived[k] = arrived.get(k, 0) + a["quantity"]
             for s in snap["stations"].values():
-                ps = prev["stations"].get(s["id"])
+                ps = prev.get("stations", {}).get(s["id"])
                 if not ps:
                     continue
                 for f in FUELS:
-                    delta = s["inventory"][f] - ps["inventory"][f] - arrived.get((s["id"], f), 0)
-                    if delta > max(300.0, 0.03 * s["capacity"][f]):  # gained fuel from nowhere
+                    prev_inv = ps["inventory"].get(f, 0.0)
+                    cur_inv = s["inventory"].get(f, 0.0)
+                    delta = cur_inv - prev_inv - arrived.get((s["id"], f), 0)
+                    cap = s["capacity"].get(f, 0.0)
+                    if delta > max(300.0, 0.03 * cap):  # gained fuel from nowhere
                         add("inventory_anomaly", f"{s['id']}/{f}", "warning", f"{s['id']} {f} +{delta:.0f} L unexplained")
 
         raised = [a for k, a in found.items() if k not in self.active]
