@@ -1,0 +1,280 @@
+{
+  "rows": [
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 10,
+      "seconds": 20.0,
+      "requests": 4508,
+      "rps": 225.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 4508
+      },
+      "avg_ms": 44.3,
+      "p50_ms": 34.7,
+      "p95_ms": 81.6,
+      "p99_ms": 306.9,
+      "max_ms": 715.8,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 50,
+      "seconds": 20.2,
+      "requests": 2253,
+      "rps": 111.6,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 2253
+      },
+      "avg_ms": 445.5,
+      "p50_ms": 307.1,
+      "p95_ms": 1268.6,
+      "p99_ms": 2095.3,
+      "max_ms": 3346.3,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 100,
+      "seconds": 20.8,
+      "requests": 2191,
+      "rps": 105.2,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 2191
+      },
+      "avg_ms": 932.1,
+      "p50_ms": 675.6,
+      "p95_ms": 2564.4,
+      "p99_ms": 3915.9,
+      "max_ms": 6574.5,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 1,
+      "seconds": 20.0,
+      "requests": 125,
+      "rps": 6.2,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 125
+      },
+      "avg_ms": 160.4,
+      "p50_ms": 156.0,
+      "p95_ms": 207.4,
+      "p99_ms": 252.3,
+      "max_ms": 266.5,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 4,
+      "seconds": 20.2,
+      "requests": 195,
+      "rps": 9.6,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 195
+      },
+      "avg_ms": 413.3,
+      "p50_ms": 404.1,
+      "p95_ms": 564.6,
+      "p99_ms": 679.5,
+      "max_ms": 685.2,
+      "phase": "baseline"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 8,
+      "seconds": 20.4,
+      "requests": 233,
+      "rps": 11.4,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 233
+      },
+      "avg_ms": 701.2,
+      "p50_ms": 694.2,
+      "p95_ms": 863.8,
+      "p99_ms": 1178.2,
+      "max_ms": 1223.4,
+      "phase": "baseline"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 10,
+      "seconds": 20.0,
+      "requests": 5138,
+      "rps": 256.9,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 5138
+      },
+      "avg_ms": 38.9,
+      "p50_ms": 33.0,
+      "p95_ms": 54.7,
+      "p99_ms": 172.4,
+      "max_ms": 724.0,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 50,
+      "seconds": 20.3,
+      "requests": 2476,
+      "rps": 122.2,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 2476
+      },
+      "avg_ms": 405.9,
+      "p50_ms": 289.4,
+      "p95_ms": 1136.1,
+      "p99_ms": 1779.8,
+      "max_ms": 2818.6,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "GET",
+      "path": "/api/state",
+      "vus": 100,
+      "seconds": 20.5,
+      "requests": 2314,
+      "rps": 112.7,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 2314
+      },
+      "avg_ms": 873.2,
+      "p50_ms": 625.3,
+      "p95_ms": 2500.2,
+      "p99_ms": 3620.7,
+      "max_ms": 6381.4,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 1,
+      "seconds": 20.0,
+      "requests": 176,
+      "rps": 8.8,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 176
+      },
+      "avg_ms": 113.6,
+      "p50_ms": 111.9,
+      "p95_ms": 145.7,
+      "p99_ms": 179.1,
+      "max_ms": 190.4,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 4,
+      "seconds": 20.3,
+      "requests": 251,
+      "rps": 12.4,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 251
+      },
+      "avg_ms": 322.8,
+      "p50_ms": 318.2,
+      "p95_ms": 445.9,
+      "p99_ms": 606.3,
+      "max_ms": 612.6,
+      "phase": "sim latency fault 500ms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/decisions/recommend",
+      "vus": 8,
+      "seconds": 20.4,
+      "requests": 255,
+      "rps": 12.5,
+      "error_rate": 0.0,
+      "codes": {
+        "200": 255
+      },
+      "avg_ms": 641.0,
+      "p50_ms": 633.3,
+      "p95_ms": 814.1,
+      "p99_ms": 917.5,
+      "max_ms": 1254.9,
+      "phase": "sim latency fault 500ms"
+    }
+  ],
+  "health": {
+    "status": "healthy",
+    "version": "0.2.0",
+    "mode": "AUTO_GATED",
+    "degraded_mode": false,
+    "components": {
+      "backend_api": {
+        "status": "healthy"
+      },
+      "database": {
+        "status": "healthy"
+      },
+      "simulator": {
+        "status": "healthy",
+        "breaker": "closed",
+        "stale": false,
+        "last_error": null,
+        "sim": {
+          "status": "RUNNING",
+          "tick": 1222
+        }
+      },
+      "event_stream": {
+        "status": "healthy",
+        "note": null
+      },
+      "prediction": {
+        "status": "healthy",
+        "mape": 0.0839474825630469
+      },
+      "decision_engine": {
+        "status": "healthy",
+        "last_cycle": {
+          "ok": true,
+          "at": 1790661428.6914601,
+          "ms": 3677.5,
+          "error": null,
+          "tick": 1215
+        },
+        "budget_mode": true
+      },
+      "ml_service": {
+        "status": "not_configured",
+        "fallback": "rule table"
+      },
+      "jev": {
+        "status": "not_configured",
+        "fallback": "rule table"
+      },
+      "llm_pool": {
+        "status": "not_configured"
+      }
+    },
+    "api": {
+      "p95_ms": 552.6,
+      "error_rate": 0.0,
+      "requests": 2000
+    },
+    "last_invalid_response": null
+  }
+}

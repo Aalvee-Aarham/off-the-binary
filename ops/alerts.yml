@@ -1,0 +1,56 @@
+groups:
+  - name: fuelops
+    rules:
+      - alert: SimulatorCircuitOpen
+        expr: sim_breaker_state == 2
+        for: 30s
+        labels: {severity: critical}
+        annotations: {summary: "Simulator circuit breaker open: backend is serving cached state, no auto-execution"}
+      - alert: DegradedMode
+        expr: degraded_mode == 1
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "Serving cached snapshot (simulator unreachable or invalid)"}
+      - alert: SnapshotStale
+        expr: snapshot_age_seconds > 30
+        for: 30s
+        labels: {severity: warning}
+        annotations: {summary: "Last good simulator snapshot is older than 30s"}
+      - alert: SimulatorFlagsStaleData
+        expr: sim_stale == 1
+        for: 15s
+        labels: {severity: warning}
+        annotations: {summary: "Simulator returns X-Simulator-Stale: plans held for human approval"}
+      - alert: ServiceLevelLow
+        expr: service_level < 0.95
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Simulated service level below 95%"}
+      - alert: FallbackSpike
+        expr: sum(increase(fallback_activations_total[5m])) > 10
+        labels: {severity: warning}
+        annotations: {summary: "More than 10 fallback activations in 5 minutes"}
+      - alert: RouterModelFailing
+        expr: sum by (reason) (increase(fallback_activations_total{reason=~"router_.*_failed"}[5m])) > 3
+        labels: {severity: warning}
+        annotations: {summary: "System-One model ({{ $labels.reason }}) failing; rule router in use"}
+      - alert: EventStreamDown
+        expr: sse_connected == 0
+        for: 2m
+        labels: {severity: info}
+        annotations: {summary: "SSE disconnected; polling fallback active"}
+      - alert: ApiErrorRateHigh
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1e-9) > 0.05
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "API 5xx rate above 5%"}
+      - alert: ApiLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{route!="/api/decisions/recommend"}[5m]))) > 0.5
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "API p95 latency above 500ms (excluding the heavy recommend path)"}
+      - alert: DecisionCycleSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(decision_cycle_seconds_bucket[5m]))) > 2
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "Decision cycle p95 above 2s: budget mode likely"}

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fuel Ops Console</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--mut:#667;--line:#dde1e6;--ok:#1a7f37;--warn:#b35900;--bad:#c62828}
+@media (prefers-color-scheme:dark){:root{--bg:#111418;--card:#1a1e24;--fg:#e6e8eb;--mut:#9aa3ad;--line:#2b313a}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:16px;margin:0 12px 0 0}h2{font-size:13px;text-transform:uppercase;color:var(--mut);margin:0 0 8px}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;padding:12px 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:420px}
+table{border-collapse:collapse;width:100%}td,th{padding:3px 6px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
+.ok{color:var(--ok)}.warning,.degraded{color:var(--warn)}.critical,.down,.bad{color:var(--bad)}.mut{color:var(--mut)}
+button,select,input{font:inherit;padding:3px 8px}.pill{padding:2px 8px;border-radius:10px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fuel Ops Console <span class="mut">(simulated)</span></h1>
+  <span id="clock" class="pill"></span><span id="overall" class="pill"></span>
+  <label>Mode <select id="mode"><option>AUTO_GATED</option><option>MANUAL</option></select></label>
+  <input id="token" type="password" placeholder="admin token" size="12">
+  <button data-sim="step">Step</button><button data-sim="run">Run</button><button data-sim="pause">Pause</button>
+  <button id="decide">Decide now</button>
+</header>
+<main>
+  <section><h2>Stockout risk</h2><table id="risks"></table></section>
+  <section><h2>Pending approval</h2><div id="pending" class="mut">none</div></section>
+  <section><h2>Alerts</h2><table id="alerts"></table></section>
+  <section><h2>Depots &amp; routes</h2><table id="depots"></table><table id="routes"></table></section>
+  <section><h2>Decision history</h2><table id="history"></table></section>
+  <section><h2>System status</h2><table id="health"></table></section>
+</main>
+<script>
+const $ = id => document.getElementById(id), fmt = n => n == null ? "–" : Math.round(n).toLocaleString();
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+try { $("token").value = localStorage.getItem("tok") || ""; } catch {}
+$("token").onchange = e => { try { localStorage.setItem("tok", e.target.value); } catch {} };
+const api = (p, o = {}) => fetch(p, {...o, headers: {"Content-Type": "application/json", "X-Admin-Token": $("token").value}})
+  .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(JSON.stringify(j.detail ?? j)); return j; });
+const act = (p, o) => api(p, {method: "POST", ...o}).then(refresh).catch(e => alert(e.message));
+document.querySelectorAll("[data-sim]").forEach(b => b.onclick = () => act("/api/sim/" + b.dataset.sim));
+$("decide").onclick = () => act("/api/decisions/run");
+$("mode").onchange = e => act("/api/mode", {method: "PUT", body: JSON.stringify({mode: e.target.value})});
+window.approve = id => act(`/api/decisions/${id}/approve`);
+window.reject = id => act(`/api/decisions/${id}/reject`);
+window.editq = (id, i, q) => api("/api/decisions/" + id).then(d => { d.shipments[i].quantity = +q;
+  return act("/api/decisions/" + id, {method: "PUT", body: JSON.stringify({shipments: d.shipments})}); });
+const ship = s => `${esc(s.fuel_type)} ${fmt(s.quantity)} L ${esc(s.source_depot_id)} → ${esc(s.destination_station_id)}`;
+const impact = e => e && e.without_action ? `unmet ${fmt(e.without_action.unmet)} → ${fmt(e.with_plan.unmet)} L, stockouts ${e.without_action.stockouts} → ${e.with_plan.stockouts}` : "";
+
+async function refresh() {
+  const [s, dec, h] = await Promise.all([api("/api/state").catch(() => null), api("/api/decisions?limit=25"), api("/api/health")]);
+  $("overall").textContent = h.status + (h.degraded_mode ? " · cached state" : ""); $("overall").className = "pill " + (h.status === "healthy" ? "ok" : h.status);
+  $("health").innerHTML = Object.entries(h.components).map(([k, c]) => `<tr><td>${k}</td><td class="${c.status === "healthy" ? "ok" : c.status}">${c.status}</td></tr>`).join("")
+    + `<tr><td>p95 latency</td><td>${h.api.p95_ms ?? "–"} ms</td></tr><tr><td>error rate</td><td>${(h.api.error_rate * 100).toFixed(2)}%</td></tr>`;
+  if (!s) return;
+  $("mode").value = s.mode;
+  $("clock").textContent = `tick ${s.tick} · ${s.sim_time.slice(0, 16).replace("T", " ")} · ${s.sim_status} · service ${(s.metrics.service_level * 100).toFixed(2)}%${s.stale ? " · STALE" : ""}`;
+  $("risks").innerHTML = "<tr><th>Station</th><th>Fuel</th><th>Inv</th><th>4h dem</th><th>Incoming</th><th>Stockout</th><th>p</th></tr>" + s.risks.slice(0, 12).map(r =>
+    `<tr class="${r.p_stockout >= .8 ? "critical" : r.p_stockout >= .5 ? "warning" : ""}"><td>${esc(r.station_id.replace("station-", ""))}</td><td>${r.fuel}</td><td>${fmt(r.inventory)}</td><td>${fmt(r.demand_4h)}</td><td>${fmt(r.incoming)}</td><td>${r.hours_to_stockout ?? "–"}h</td><td>${(r.p_stockout * 100).toFixed(0)}%</td></tr>`).join("");
+  $("alerts").innerHTML = s.alerts.map(a => `<tr class="${a.severity}"><td>${a.severity}</td><td>${esc(a.message)}</td></tr>`).join("") || "<tr><td class=ok>no active alerts</td></tr>";
+  $("depots").innerHTML = s.depots.map(d => `<tr><td>${esc(d.id)}</td><td class="${d.status === "OPEN" ? "" : "warning"}">${d.status}</td><td>D ${fmt(d.inventory.DIESEL)} · P ${fmt(d.inventory.PETROL)} · O ${fmt(d.inventory.OCTANE)}</td></tr>`).join("");
+  $("routes").innerHTML = s.routes.filter(r => r.status !== "AVAILABLE").map(r => `<tr class="bad"><td>${esc(r.id)}</td><td>${r.status}</td></tr>`).join("");
+  const pend = dec.filter(d => d.status === "PENDING_APPROVAL");
+  $("pending").innerHTML = pend.map(d => `<div><b>${d.algorithm}</b> · ${esc(d.router.regime)} · tick ${d.tick}<br><span class="mut">${esc(d.gate.reasons.join("; "))}</span><br>${impact(d.expected)}
+    ${d.shipments.map((x, i) => `<div>${ship(x)} <input size=6 value="${x.quantity}" onchange="editq('${d.id}',${i},this.value)"></div>`).join("")}
+    <button onclick="approve('${d.id}')">Approve</button> <button onclick="reject('${d.id}')">Reject</button></div><hr>`).join("") || "none";
+  $("history").innerHTML = dec.filter(d => d.status !== "PENDING_APPROVAL").map(d => `<tr><td>${d.tick}</td><td>${d.status}</td><td>${d.algorithm}${d.router_hit === false ? " *" : ""}</td><td>${d.actor ?? ""}</td><td title="${esc((d.shipments || []).map(ship).join("\n"))}">${(d.shipments || []).length} ships</td><td class=mut>${impact(d.expected)}</td></tr>`).join("");
+}
+refresh(); setInterval(() => refresh().catch(() => {}), 2000);
+</script>
+</body>
+</html>

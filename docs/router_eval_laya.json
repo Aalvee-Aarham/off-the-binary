@@ -1,0 +1,874 @@
+{
+  "summary": {
+    "n": 24,
+    "rules": {
+      "algorithm_near_best": 0.458
+    },
+    "laya": {
+      "answered": 24,
+      "errors": 0,
+      "regime_accuracy": 0.667,
+      "algorithm_near_best": 0.292,
+      "latency_ms_p50": 9646.95,
+      "mean_confidence": 0.09,
+      "regimes_predicted": {
+        "normal": 0,
+        "demand_spike": 8,
+        "supply_crisis": 8,
+        "route_disruption": 4,
+        "depot_constraint": 4,
+        "combined": 0
+      },
+      "algorithms_predicted": {
+        "mpc": 24,
+        "lp": 0,
+        "robust_lp": 0,
+        "rationing": 0,
+        "greedy": 0,
+        "hold": 0
+      }
+    }
+  },
+  "rows": [
+    {
+      "scenario": "normal",
+      "tick": 30,
+      "label_regime": "normal",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4905,
+        "confidence": 0.0673,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0247,
+            "demand_spike": 0.2253,
+            "supply_crisis": 0.3229,
+            "route_disruption": 0.1924,
+            "depot_constraint": 0.1243,
+            "combined": 0.1103
+          },
+          "algorithm": {
+            "mpc": 0.3059,
+            "lp": 0.1223,
+            "robust_lp": 0.1804,
+            "rationing": 0.202,
+            "greedy": 0.1437,
+            "hold": 0.0457
+          }
+        },
+        "latency_ms": 9926.1,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "normal",
+      "tick": 70,
+      "label_regime": "normal",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4805,
+        "confidence": 0.0621,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0358,
+            "demand_spike": 0.1502,
+            "supply_crisis": 0.3781,
+            "route_disruption": 0.171,
+            "depot_constraint": 0.1263,
+            "combined": 0.1386
+          },
+          "algorithm": {
+            "mpc": 0.2987,
+            "lp": 0.1404,
+            "robust_lp": 0.1809,
+            "rationing": 0.1839,
+            "greedy": 0.1528,
+            "hold": 0.0434
+          }
+        },
+        "latency_ms": 9003.6,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "normal",
+      "tick": 110,
+      "label_regime": "normal",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4652,
+        "confidence": 0.0654,
+        "probabilities": {
+          "regime": {
+            "normal": 0.038,
+            "demand_spike": 0.1757,
+            "supply_crisis": 0.3551,
+            "route_disruption": 0.1747,
+            "depot_constraint": 0.1263,
+            "combined": 0.1303
+          },
+          "algorithm": {
+            "mpc": 0.2924,
+            "lp": 0.1556,
+            "robust_lp": 0.1903,
+            "rationing": 0.1874,
+            "greedy": 0.1362,
+            "hold": 0.0381
+          }
+        },
+        "latency_ms": 9105.5,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "normal",
+      "tick": 150,
+      "label_regime": "normal",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4133,
+        "confidence": 0.0593,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0474,
+            "demand_spike": 0.184,
+            "supply_crisis": 0.3392,
+            "route_disruption": 0.1867,
+            "depot_constraint": 0.1386,
+            "combined": 0.1041
+          },
+          "algorithm": {
+            "mpc": 0.2882,
+            "lp": 0.1654,
+            "robust_lp": 0.185,
+            "rationing": 0.1841,
+            "greedy": 0.1336,
+            "hold": 0.0437
+          }
+        },
+        "latency_ms": 9356.1,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "demand_spike",
+      "tick": 30,
+      "label_regime": "demand_spike",
+      "rules_algorithm": "robust_lp",
+      "winner": "robust_lp",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.452,
+        "confidence": 0.0881,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0251,
+            "demand_spike": 0.5382,
+            "supply_crisis": 0.149,
+            "route_disruption": 0.1086,
+            "depot_constraint": 0.0638,
+            "combined": 0.1153
+          },
+          "algorithm": {
+            "mpc": 0.3181,
+            "lp": 0.0979,
+            "robust_lp": 0.2273,
+            "rationing": 0.1856,
+            "greedy": 0.133,
+            "hold": 0.038
+          }
+        },
+        "latency_ms": 8852.0,
+        "near_best": false
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "demand_spike",
+      "tick": 70,
+      "label_regime": "demand_spike",
+      "rules_algorithm": "robust_lp",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4382,
+        "confidence": 0.093,
+        "probabilities": {
+          "regime": {
+            "normal": 0.024,
+            "demand_spike": 0.4905,
+            "supply_crisis": 0.1586,
+            "route_disruption": 0.1162,
+            "depot_constraint": 0.0704,
+            "combined": 0.1404
+          },
+          "algorithm": {
+            "mpc": 0.3291,
+            "lp": 0.093,
+            "robust_lp": 0.2198,
+            "rationing": 0.1782,
+            "greedy": 0.1443,
+            "hold": 0.0356
+          }
+        },
+        "latency_ms": 9795.8,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "demand_spike",
+      "tick": 110,
+      "label_regime": "demand_spike",
+      "rules_algorithm": "robust_lp",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4303,
+        "confidence": 0.0863,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0245,
+            "demand_spike": 0.5043,
+            "supply_crisis": 0.1521,
+            "route_disruption": 0.1132,
+            "depot_constraint": 0.0658,
+            "combined": 0.14
+          },
+          "algorithm": {
+            "mpc": 0.3113,
+            "lp": 0.098,
+            "robust_lp": 0.2269,
+            "rationing": 0.1834,
+            "greedy": 0.1448,
+            "hold": 0.0357
+          }
+        },
+        "latency_ms": 9689.9,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "demand_spike",
+      "tick": 150,
+      "label_regime": "demand_spike",
+      "rules_algorithm": "robust_lp",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.399,
+        "confidence": 0.0786,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0298,
+            "demand_spike": 0.5058,
+            "supply_crisis": 0.1482,
+            "route_disruption": 0.1243,
+            "depot_constraint": 0.0706,
+            "combined": 0.1212
+          },
+          "algorithm": {
+            "mpc": 0.3033,
+            "lp": 0.1045,
+            "robust_lp": 0.2231,
+            "rationing": 0.1834,
+            "greedy": 0.1473,
+            "hold": 0.0384
+          }
+        },
+        "latency_ms": 9632.5,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "route_disruption",
+      "tick": 30,
+      "label_regime": "route_disruption",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "route_disruption",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5519,
+        "confidence": 0.1197,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0132,
+            "demand_spike": 0.1015,
+            "supply_crisis": 0.1906,
+            "route_disruption": 0.4728,
+            "depot_constraint": 0.0727,
+            "combined": 0.1492
+          },
+          "algorithm": {
+            "mpc": 0.3733,
+            "lp": 0.0839,
+            "robust_lp": 0.1965,
+            "rationing": 0.208,
+            "greedy": 0.0999,
+            "hold": 0.0384
+          }
+        },
+        "latency_ms": 9617.9,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "route_disruption",
+      "tick": 70,
+      "label_regime": "route_disruption",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "route_disruption",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5713,
+        "confidence": 0.0919,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0143,
+            "demand_spike": 0.1005,
+            "supply_crisis": 0.1881,
+            "route_disruption": 0.4498,
+            "depot_constraint": 0.066,
+            "combined": 0.1813
+          },
+          "algorithm": {
+            "mpc": 0.3395,
+            "lp": 0.1034,
+            "robust_lp": 0.2027,
+            "rationing": 0.1904,
+            "greedy": 0.1252,
+            "hold": 0.0389
+          }
+        },
+        "latency_ms": 9715.4,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "route_disruption",
+      "tick": 110,
+      "label_regime": "route_disruption",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "route_disruption",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5765,
+        "confidence": 0.1065,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0146,
+            "demand_spike": 0.1052,
+            "supply_crisis": 0.1867,
+            "route_disruption": 0.4398,
+            "depot_constraint": 0.069,
+            "combined": 0.1847
+          },
+          "algorithm": {
+            "mpc": 0.3517,
+            "lp": 0.1004,
+            "robust_lp": 0.2052,
+            "rationing": 0.1951,
+            "greedy": 0.1162,
+            "hold": 0.0314
+          }
+        },
+        "latency_ms": 10067.3,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "route_disruption",
+      "tick": 150,
+      "label_regime": "route_disruption",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "route_disruption",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5659,
+        "confidence": 0.0972,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0151,
+            "demand_spike": 0.1043,
+            "supply_crisis": 0.1974,
+            "route_disruption": 0.4452,
+            "depot_constraint": 0.0719,
+            "combined": 0.1661
+          },
+          "algorithm": {
+            "mpc": 0.3377,
+            "lp": 0.107,
+            "robust_lp": 0.2029,
+            "rationing": 0.2008,
+            "greedy": 0.1183,
+            "hold": 0.0333
+          }
+        },
+        "latency_ms": 10510.7,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "supply_crisis",
+      "tick": 30,
+      "label_regime": "supply_crisis",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5337,
+        "confidence": 0.1259,
+        "probabilities": {
+          "regime": {
+            "normal": 0.016,
+            "demand_spike": 0.1472,
+            "supply_crisis": 0.4852,
+            "route_disruption": 0.1266,
+            "depot_constraint": 0.0984,
+            "combined": 0.1266
+          },
+          "algorithm": {
+            "mpc": 0.3832,
+            "lp": 0.0909,
+            "robust_lp": 0.1734,
+            "rationing": 0.2171,
+            "greedy": 0.1029,
+            "hold": 0.0324
+          }
+        },
+        "latency_ms": 9345.6,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "supply_crisis",
+      "tick": 70,
+      "label_regime": "supply_crisis",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5228,
+        "confidence": 0.1094,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0187,
+            "demand_spike": 0.1341,
+            "supply_crisis": 0.4882,
+            "route_disruption": 0.1435,
+            "depot_constraint": 0.1007,
+            "combined": 0.1149
+          },
+          "algorithm": {
+            "mpc": 0.3654,
+            "lp": 0.0917,
+            "robust_lp": 0.1726,
+            "rationing": 0.2064,
+            "greedy": 0.1301,
+            "hold": 0.0338
+          }
+        },
+        "latency_ms": 9164.2,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "supply_crisis",
+      "tick": 110,
+      "label_regime": "supply_crisis",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5211,
+        "confidence": 0.1147,
+        "probabilities": {
+          "regime": {
+            "normal": 0.019,
+            "demand_spike": 0.1333,
+            "supply_crisis": 0.4905,
+            "route_disruption": 0.1397,
+            "depot_constraint": 0.0989,
+            "combined": 0.1186
+          },
+          "algorithm": {
+            "mpc": 0.3722,
+            "lp": 0.0982,
+            "robust_lp": 0.1765,
+            "rationing": 0.2007,
+            "greedy": 0.1225,
+            "hold": 0.0299
+          }
+        },
+        "latency_ms": 9372.8,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "supply_crisis",
+      "tick": 150,
+      "label_regime": "supply_crisis",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "supply_crisis",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5226,
+        "confidence": 0.1053,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0202,
+            "demand_spike": 0.1267,
+            "supply_crisis": 0.4951,
+            "route_disruption": 0.1372,
+            "depot_constraint": 0.0975,
+            "combined": 0.1233
+          },
+          "algorithm": {
+            "mpc": 0.3542,
+            "lp": 0.1039,
+            "robust_lp": 0.1832,
+            "rationing": 0.2086,
+            "greedy": 0.1183,
+            "hold": 0.0319
+          }
+        },
+        "latency_ms": 8791.5,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "depot_constraint",
+      "tick": 30,
+      "label_regime": "depot_constraint",
+      "rules_algorithm": "mpc",
+      "winner": "mpc",
+      "laya": {
+        "regime": "depot_constraint",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.476,
+        "confidence": 0.0984,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0188,
+            "demand_spike": 0.0975,
+            "supply_crisis": 0.2225,
+            "route_disruption": 0.1064,
+            "depot_constraint": 0.4473,
+            "combined": 0.1075
+          },
+          "algorithm": {
+            "mpc": 0.3514,
+            "lp": 0.0984,
+            "robust_lp": 0.1846,
+            "rationing": 0.2089,
+            "greedy": 0.1152,
+            "hold": 0.0414
+          }
+        },
+        "latency_ms": 9418.9,
+        "near_best": true
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "depot_constraint",
+      "tick": 70,
+      "label_regime": "depot_constraint",
+      "rules_algorithm": "mpc",
+      "winner": "robust_lp",
+      "laya": {
+        "regime": "depot_constraint",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5133,
+        "confidence": 0.0845,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0193,
+            "demand_spike": 0.079,
+            "supply_crisis": 0.2174,
+            "route_disruption": 0.114,
+            "depot_constraint": 0.4363,
+            "combined": 0.1341
+          },
+          "algorithm": {
+            "mpc": 0.3426,
+            "lp": 0.1127,
+            "robust_lp": 0.1692,
+            "rationing": 0.2022,
+            "greedy": 0.1277,
+            "hold": 0.0456
+          }
+        },
+        "latency_ms": 9425.7,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "depot_constraint",
+      "tick": 110,
+      "label_regime": "depot_constraint",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "depot_constraint",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5088,
+        "confidence": 0.0923,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0216,
+            "demand_spike": 0.0864,
+            "supply_crisis": 0.2061,
+            "route_disruption": 0.1129,
+            "depot_constraint": 0.4393,
+            "combined": 0.1337
+          },
+          "algorithm": {
+            "mpc": 0.3359,
+            "lp": 0.1186,
+            "robust_lp": 0.177,
+            "rationing": 0.2148,
+            "greedy": 0.1187,
+            "hold": 0.0349
+          }
+        },
+        "latency_ms": 9763.2,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "depot_constraint",
+      "tick": 150,
+      "label_regime": "depot_constraint",
+      "rules_algorithm": "mpc",
+      "winner": "rationing",
+      "laya": {
+        "regime": "depot_constraint",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.4926,
+        "confidence": 0.083,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0231,
+            "demand_spike": 0.0854,
+            "supply_crisis": 0.2044,
+            "route_disruption": 0.1171,
+            "depot_constraint": 0.4542,
+            "combined": 0.1158
+          },
+          "algorithm": {
+            "mpc": 0.3239,
+            "lp": 0.1239,
+            "robust_lp": 0.1744,
+            "rationing": 0.2173,
+            "greedy": 0.1213,
+            "hold": 0.0392
+          }
+        },
+        "latency_ms": 9661.4,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "combined",
+      "tick": 30,
+      "label_regime": "combined",
+      "rules_algorithm": "rationing",
+      "winner": "robust_lp",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5249,
+        "confidence": 0.08,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0269,
+            "demand_spike": 0.292,
+            "supply_crisis": 0.2088,
+            "route_disruption": 0.2113,
+            "depot_constraint": 0.0831,
+            "combined": 0.1779
+          },
+          "algorithm": {
+            "mpc": 0.2922,
+            "lp": 0.1071,
+            "robust_lp": 0.2355,
+            "rationing": 0.203,
+            "greedy": 0.1222,
+            "hold": 0.0399
+          }
+        },
+        "latency_ms": 11121.5,
+        "near_best": false
+      },
+      "rules_near_best": false
+    },
+    {
+      "scenario": "combined",
+      "tick": 70,
+      "label_regime": "combined",
+      "rules_algorithm": "rationing",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5227,
+        "confidence": 0.0867,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0283,
+            "demand_spike": 0.2989,
+            "supply_crisis": 0.1939,
+            "route_disruption": 0.2102,
+            "depot_constraint": 0.0805,
+            "combined": 0.1882
+          },
+          "algorithm": {
+            "mpc": 0.3074,
+            "lp": 0.1114,
+            "robust_lp": 0.2317,
+            "rationing": 0.1937,
+            "greedy": 0.1207,
+            "hold": 0.0349
+          }
+        },
+        "latency_ms": 10773.3,
+        "near_best": false
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "combined",
+      "tick": 110,
+      "label_regime": "combined",
+      "rules_algorithm": "rationing",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5236,
+        "confidence": 0.0885,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0278,
+            "demand_spike": 0.3081,
+            "supply_crisis": 0.1935,
+            "route_disruption": 0.2031,
+            "depot_constraint": 0.0798,
+            "combined": 0.1877
+          },
+          "algorithm": {
+            "mpc": 0.3071,
+            "lp": 0.1099,
+            "robust_lp": 0.2326,
+            "rationing": 0.1952,
+            "greedy": 0.122,
+            "hold": 0.0332
+          }
+        },
+        "latency_ms": 10368.0,
+        "near_best": false
+      },
+      "rules_near_best": true
+    },
+    {
+      "scenario": "combined",
+      "tick": 150,
+      "label_regime": "combined",
+      "rules_algorithm": "rationing",
+      "winner": "rationing",
+      "laya": {
+        "regime": "demand_spike",
+        "algorithm": "mpc",
+        "severity": 2,
+        "needs_human": 0.5153,
+        "confidence": 0.086,
+        "probabilities": {
+          "regime": {
+            "normal": 0.0305,
+            "demand_spike": 0.3086,
+            "supply_crisis": 0.1946,
+            "route_disruption": 0.1988,
+            "depot_constraint": 0.083,
+            "combined": 0.1845
+          },
+          "algorithm": {
+            "mpc": 0.3043,
+            "lp": 0.1165,
+            "robust_lp": 0.2324,
+            "rationing": 0.1925,
+            "greedy": 0.121,
+            "hold": 0.0334
+          }
+        },
+        "latency_ms": 10811.2,
+        "near_best": false
+      },
+      "rules_near_best": true
+    }
+  ]
+}

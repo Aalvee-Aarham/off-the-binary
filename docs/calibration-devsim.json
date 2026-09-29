@@ -1,0 +1,179 @@
+{
+  "probes": {
+    "stock_deducted_at_create": {
+      "value": true,
+      "before": 60000.0,
+      "after": 59000.0
+    },
+    "timing": {
+      "created": 0,
+      "departure": 1,
+      "arrival": 3,
+      "transit_ticks": 2,
+      "matches_twin": true
+    },
+    "dispatch_cap": {
+      "same_tick_overflow_rejected": false,
+      "resets_next_tick": false,
+      "codes": [
+        null,
+        "ROUTE_CAPACITY_EXCEEDED",
+        "DESTINATION_CAPACITY_EXCEEDED"
+      ],
+      "twin_assumes": "only allocations created this tick count"
+    },
+    "constrained_depot": {
+      "status": "CONSTRAINED",
+      "dispatch_capacity_per_tick": 12000,
+      "full_dispatch_accepted": true,
+      "codes": [
+        null,
+        null
+      ],
+      "recommend_CONSTRAINED_DISPATCH_FACTOR": 1.0
+    },
+    "disruption_at_departure": {
+      "route_status_right_after_inject": "DISRUPTED",
+      "allocation_status": "FAILED",
+      "failure_reason": "ROUTE_DISRUPTED",
+      "refunded": true
+    },
+    "demand_history": {
+      "limit12_ticks": [
+        3
+      ],
+      "newest_first": true,
+      "rows_per_tick": 12
+    }
+  },
+  "lockstep": {
+    "ticks": 100,
+    "ticks_with_drift": 0,
+    "first_divergence": null,
+    "acceptance_mismatches": [],
+    "service_level": {
+      "sim": 0.975816,
+      "twin": 0.975816
+    },
+    "served_liters": {
+      "sim": 104281.431,
+      "twin": 104281.4
+    }
+  },
+  "demand_formula": {
+    "mean_ratio_by_profile_hour": {
+      "highway@00": 1.008,
+      "highway@01": 1.031,
+      "highway@02": 1.03,
+      "highway@03": 0.981,
+      "highway@04": 0.969,
+      "highway@05": 1.011,
+      "highway@06": 1.0,
+      "highway@07": 1.002,
+      "highway@08": 0.985,
+      "highway@09": 0.93,
+      "highway@10": 1.047,
+      "highway@11": 0.948,
+      "highway@12": 0.967,
+      "highway@13": 0.999,
+      "highway@14": 0.977,
+      "highway@15": 1.012,
+      "highway@16": 0.993,
+      "highway@17": 0.986,
+      "highway@18": 0.925,
+      "highway@19": 1.013,
+      "highway@20": 1.05,
+      "highway@21": 1.004,
+      "highway@22": 0.952,
+      "highway@23": 1.034,
+      "industrial@00": 1.022,
+      "industrial@01": 1.018,
+      "industrial@02": 1.001,
+      "industrial@03": 1.016,
+      "industrial@04": 1.053,
+      "industrial@05": 1.88,
+      "industrial@06": 1.732,
+      "industrial@07": 1.778,
+      "industrial@08": 1.812,
+      "industrial@09": 1.81,
+      "industrial@10": 1.766,
+      "industrial@11": 1.199,
+      "industrial@12": 0.982,
+      "industrial@13": 0.997,
+      "industrial@14": 0.964,
+      "industrial@15": 1.023,
+      "industrial@16": 0.97,
+      "industrial@17": 1.006,
+      "industrial@18": 1.061,
+      "industrial@19": 0.985,
+      "industrial@20": 0.986,
+      "industrial@21": 1.01,
+      "industrial@22": 0.995,
+      "industrial@23": 0.999,
+      "regional@00": 1.031,
+      "regional@01": 0.981,
+      "regional@02": 0.988,
+      "regional@03": 1.004,
+      "regional@04": 1.075,
+      "regional@05": 0.965,
+      "regional@06": 1.016,
+      "regional@07": 0.987,
+      "regional@08": 0.995,
+      "regional@09": 0.97,
+      "regional@10": 1.035,
+      "regional@11": 1.002,
+      "regional@12": 1.033,
+      "regional@13": 0.972,
+      "regional@14": 0.948,
+      "regional@15": 0.986,
+      "regional@16": 0.985,
+      "regional@17": 0.944,
+      "regional@18": 1.045,
+      "regional@19": 0.996,
+      "regional@20": 0.964,
+      "regional@21": 0.967,
+      "regional@22": 0.982,
+      "regional@23": 1.01,
+      "urban_high@00": 0.993,
+      "urban_high@01": 0.991,
+      "urban_high@02": 0.995,
+      "urban_high@03": 0.986,
+      "urban_high@04": 0.991,
+      "urban_high@05": 1.862,
+      "urban_high@06": 1.887,
+      "urban_high@07": 1.757,
+      "urban_high@08": 1.894,
+      "urban_high@09": 1.851,
+      "urban_high@10": 1.727,
+      "urban_high@11": 1.196,
+      "urban_high@12": 1.006,
+      "urban_high@13": 1.0,
+      "urban_high@14": 1.061,
+      "urban_high@15": 1.028,
+      "urban_high@16": 0.975,
+      "urban_high@17": 1.03,
+      "urban_high@18": 0.998,
+      "urban_high@19": 1.028,
+      "urban_high@20": 0.962,
+      "urban_high@21": 0.986,
+      "urban_high@22": 1.005,
+      "urban_high@23": 1.048
+    },
+    "suspect_hours(|ratio-1|>0.15, spikes included)": {
+      "industrial@05": 1.88,
+      "industrial@06": 1.732,
+      "industrial@07": 1.778,
+      "industrial@08": 1.812,
+      "industrial@09": 1.81,
+      "industrial@10": 1.766,
+      "industrial@11": 1.199,
+      "urban_high@05": 1.862,
+      "urban_high@06": 1.887,
+      "urban_high@07": 1.757,
+      "urban_high@08": 1.894,
+      "urban_high@09": 1.851,
+      "urban_high@10": 1.727,
+      "urban_high@11": 1.196
+    }
+  }
+}

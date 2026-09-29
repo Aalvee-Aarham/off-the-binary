@@ -1,0 +1,10 @@
+.env
+.venv*/
+__pycache__/
+*.pyc
+data/
+backend/data/
+.pytest_cache/
+ml/finetune/
+*.log
+.claude/

@@ -1,0 +1,48 @@
+services:
+  simulator:
+    image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
+    environment:
+      SIMULATION_SPEED: ${SIMULATION_SPEED:-2}
+      TICK_MINUTES: ${TICK_MINUTES:-15}
+      SIMULATOR_START_MODE: ${SIMULATOR_START_MODE:-paused}
+    ports: ["8000:8000"]
+
+  ml-service:            # Laya; killable -> backend falls back to the rule router
+    build: ./ml
+    environment:
+      LAYA_MODELS: ${LAYA_MODEL:-typed-decisions}
+    volumes: ["laya-models:/models"]
+    mem_limit: 3g
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      SIM_BASE_URL: http://simulator:8000
+      LAYA_URL: http://ml-service:8000
+      DB_PATH: /app/data/fuelops.db
+    ports: ["8080:8080"]
+    volumes: ["backend-data:/app/data"]
+    depends_on: [simulator, ml-service]   # both optional at runtime: degraded mode / rule router
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    volumes: ["./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro", "./ops/alerts.yml:/etc/prometheus/alerts.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [backend]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/fuelops.json
+    volumes: ["./ops/grafana:/etc/grafana/provisioning:ro"]
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  backend-data:
+  laya-models:
