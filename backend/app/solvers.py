@@ -159,7 +159,7 @@ def _windows(snap, H):
             if ev["type"] != kind or ev["status"] == "RESOLVED":
                 continue
             ids = ev["parameters"].get(ids_key) or list(out)
-            s, e = max(0, ev["start_tick"] - t0), max(0, ev["end_tick"] - t0)
+            s, e = max(0, ev["start_tick"] - t0), max(0, ev["end_tick"] - t0 + 1)  # end_tick inclusive (calibrated)
             for i in ids:
                 if i in out:
                     if ev["status"] == "ACTIVE":

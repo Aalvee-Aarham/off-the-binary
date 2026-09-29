@@ -3,7 +3,8 @@
 Used for: plan scoring (tournament), the local dev simulator (devsim.py), and PPO training.
 Tick semantics were calibrated against the real image (scripts/calibrate.py in CI): a step *processes the current
 tick t* (events, supply, arrivals, departures at t, demand rows labeled t) and only then advances to t+1.
-Allocations on a disrupted route FAIL at departure and the fuel is NOT refunded.
+Allocations on a disrupted route FAIL at departure and the fuel is NOT refunded. Events are in force for processed
+ticks start_tick..end_tick inclusive. Arrivals beyond station capacity are clipped. (One-step check: 119/120 ticks exact.)
 """
 import copy
 import random
@@ -209,7 +210,7 @@ class Twin:
         for e in self.events:
             if e["status"] == "SCHEDULED" and e["start_tick"] <= t:
                 self._start_event(e)
-            if e["status"] == "ACTIVE" and e["end_tick"] <= t:
+            if e["status"] == "ACTIVE" and e["end_tick"] < t:  # calibrated: still in force while end_tick is processed
                 e["status"] = "RESOLVED"
                 self._apply(e, False)
         for a in self.supply:

@@ -84,9 +84,9 @@ class Forecaster:
                 continue
             f = float(p.get("multiplier", 1.5))
             if e["status"] == "SCHEDULED":
-                m[(ticks >= e["start_tick"]) & (ticks < e["end_tick"])] *= f
+                m[(ticks >= e["start_tick"]) & (ticks <= e["end_tick"])] *= f  # end_tick inclusive (calibrated)
             elif e["status"] == "ACTIVE":
-                m[ticks >= e["end_tick"]] /= f
+                m[ticks > e["end_tick"]] /= f
         return m
 
     def paths(self, snap, H):

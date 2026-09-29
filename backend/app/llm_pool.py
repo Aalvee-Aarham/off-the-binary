@@ -21,6 +21,24 @@ class LLMUnavailable(Exception):
     pass
 
 
+def _groq_reasoning(model):
+    """Short operator texts don't need hidden reasoning tokens (they cost latency and budget)."""
+    if "qwen" in model:
+        return {"reasoning_effort": "none"}
+    if "gpt-oss" in model:
+        return {"reasoning_effort": "low"}
+    return {}
+
+
+def _gemini_thinking(model):
+    """Thinking tokens count against maxOutputTokens and can leave no text: keep them minimal."""
+    if "2.5" in model:
+        return {"thinkingConfig": {"thinkingBudget": 0}}
+    if "gemini-3" in model:
+        return {"thinkingConfig": {"thinkingLevel": "minimal"}}
+    return {}
+
+
 class Key:
     def __init__(self, provider, idx, secret):
         self.provider, self.idx, self.secret = provider, idx, secret
@@ -62,7 +80,8 @@ class LLMPool:
         if k.provider == "groq":
             r = await self.http.post("https://api.groq.com/openai/v1/chat/completions",
                                      headers={"Authorization": f"Bearer {k.secret}"},
-                                     json={"model": config.GROQ_MODEL, "max_tokens": max_tokens, "temperature": 0.2,
+                                     json={"model": config.GROQ_MODEL, "max_tokens": max_tokens + 400, "temperature": 0.2,
+                                           **_groq_reasoning(config.GROQ_MODEL),
                                            "messages": [{"role": "system", "content": system},
                                                         {"role": "user", "content": prompt}]})
             r.raise_for_status()
@@ -72,9 +91,11 @@ class LLMPool:
             headers={"x-goog-api-key": k.secret},
             json={"systemInstruction": {"parts": [{"text": system}]},
                   "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                  "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.2}})
+                  "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.2,
+                                       # thinking tokens would eat the budget and return no text
+                                       **_gemini_thinking(config.GEMINI_MODEL)}})
         r.raise_for_status()
-        parts = r.json()["candidates"][0]["content"]["parts"]
+        parts = r.json()["candidates"][0].get("content", {}).get("parts") or []  # MAX_TOKENS -> no parts
         return "".join(p.get("text", "") for p in parts).strip()
 
     async def complete(self, system, prompt, max_tokens=350, purpose="other"):

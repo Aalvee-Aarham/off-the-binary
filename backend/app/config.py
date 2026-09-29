@@ -49,8 +49,8 @@ ROUTER_SHADOW = _env("ROUTER_SHADOW", 1, int)            # also ask the other mo
 # LLM pool (phase 6): text only, templates are the default, LLM only where a human reads
 GROQ_API_KEYS = [k.strip() for k in _env("GROQ_API_KEYS", "").split(",") if k.strip()]
 GEMINI_API_KEYS = [k.strip() for k in _env("GEMINI_API_KEYS", "").split(",") if k.strip()]
-GROQ_MODEL = _env("GROQ_MODEL", "llama-3.3-70b-versatile")
-GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-2.5-flash")
+GROQ_MODEL = _env("GROQ_MODEL", "qwen/qwen3.8-27b")
+GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-3.5-flash-lite")
 LLM_TIMEOUT_S = _env("LLM_TIMEOUT_S", 8.0, float)
 LLM_MAX_CONCURRENT = _env("LLM_MAX_CONCURRENT", 8, int)
 LLM_MAX_ATTEMPTS = _env("LLM_MAX_ATTEMPTS", 4, int)          # keys tried per call before template fallback
