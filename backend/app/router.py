@@ -193,7 +193,7 @@ class Router:
             if len(self.failed) > 256:
                 self.failed.pop(next(iter(self.failed)))
             M.FALLBACKS.labels(f"router_{src}_failed").inc()
-            quiet = "breaker open" in str(e) or "disabled" in str(e)
+            quiet = any(x in str(e) for x in ("breaker open", "disabled", "budget"))
             (log.debug if quiet else log.warning)("router.model_failed", extra={"event": "router.model_failed", "model": src,
                                                                                  "error": str(e)[:200]})
 

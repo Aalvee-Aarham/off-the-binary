@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS decisions (
   id TEXT PRIMARY KEY, created_at REAL, tick INTEGER, status TEXT, actor TEXT,
   regime TEXT, algorithm TEXT, gate TEXT, body TEXT);
 CREATE INDEX IF NOT EXISTS decisions_status ON decisions(status);
+CREATE TABLE IF NOT EXISTS llm_cache (hash TEXT PRIMARY KEY, created_at REAL, body TEXT);
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY AUTOINCREMENT, created_at REAL, tick INTEGER, kind TEXT, type TEXT,
   severity TEXT, entity TEXT, message TEXT);
@@ -62,6 +63,15 @@ class Audit:
         with self.lock, self.db:
             self.db.execute("INSERT INTO alerts(created_at, tick, kind, type, severity, entity, message) VALUES (?,?,?,?,?,?,?)",
                             (time.time(), a.get("tick"), kind, a["type"], a["severity"], a["entity"], a["message"]))
+
+    def llm_get(self, h):
+        with self.lock:
+            r = self.db.execute("SELECT body FROM llm_cache WHERE hash=?", (h,)).fetchone()
+        return json.loads(r["body"]) if r else None
+
+    def llm_put(self, h, body):
+        with self.lock, self.db:
+            self.db.execute("INSERT OR REPLACE INTO llm_cache VALUES (?,?,?)", (h, time.time(), json.dumps(body)))
 
     def alerts(self, limit=100):
         with self.lock:

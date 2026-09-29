@@ -14,7 +14,7 @@ from app import config
 from app.detect import Detector
 from app.forecast import Forecaster, arrivals, risks
 from app.router import QUESTIONS, parse, route_rules, state_text
-from app.solvers import tournament
+from app.solvers import ALGOS, build_problem, check, finalize, tournament
 from app.systemone import SystemOneClient
 from app.world import Twin, baseline_world
 
@@ -31,17 +31,27 @@ SCENARIOS = {
 }
 
 
-def situations(ticks=(30, 70, 110, 150)):
+def situations(ticks=(30, 70, 110, 150), policy="mpc"):
+    """Realistic states: the twin runs with a shipping policy (every 2 ticks), like live operations.
+    policy=None reproduces the original no-shipping states (stations run dry by ~tick 70)."""
     for name, evs in SCENARIOS.items():
         for T in ticks:
             tw = Twin(baseline_world())
             for e in evs:
                 tw.add_event(*e)
-            fc = Forecaster()
-            for _ in range(T):
+            fc, seen = Forecaster(), 0
+            for i in range(T):
+                if policy and i % 2 == 0:
+                    s = tw.snapshot()
+                    fc.ingest(tw.demand_log[seen:], s)
+                    seen = len(tw.demand_log)
+                    p, a = fc.paths(s, H), arrivals(s, H)
+                    ships, _ = check(finalize(ALGOS[policy](build_problem(s, fc, p, a, risks(s, fc, p, a, H))), s), s)
+                    for x in ships:
+                        tw.submit(x["source_depot_id"], x["destination_station_id"], x["route_id"], x["fuel_type"], x["quantity"])
                 tw.step()
             s = tw.snapshot()
-            fc.ingest(tw.demand_log, s)
+            fc.ingest(tw.demand_log[seen:], s)
             p, a = fc.paths(s, H), arrivals(s, H)
             r = risks(s, fc, p, a, H)
             _, _, flags = (det := Detector()).run(s, None, r, p, fc)
@@ -74,6 +84,7 @@ async def main():
     ap.add_argument("--laya", default="http://localhost:8001")
     ap.add_argument("--laya-model", default=config.LAYA_MODEL)
     ap.add_argument("--jev-key", default=config.JEV_API_KEY)
+    ap.add_argument("--ticks", default="30,70,110,150", help="comma list; fewer ticks = fewer (paid) model calls")
     ap.add_argument("--out")
     a = ap.parse_args()
     clients = {}
@@ -82,7 +93,7 @@ async def main():
     if a.jev_key:
         clients["jev"] = SystemOneClient("jev", config.JEV_URL, api_key=a.jev_key, model=config.JEV_MODEL, timeout=30)
     t0 = time.time()
-    sits = list(situations())
+    sits = list(situations(tuple(int(x) for x in a.ticks.split(","))))
     print(f"{len(sits)} situations built in {time.time() - t0:.0f}s")
     rows = []
     for sit in sits:

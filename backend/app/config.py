@@ -43,4 +43,14 @@ JEV_URL = _env("JEV_URL", "https://openrouter.ai/api")
 JEV_MODEL = _env("JEV_MODEL", "jev-1.13")               # per OpenRouter System One docs
 JEV_API_KEY = _env("JEV_API_KEY", "")                    # OpenRouter key for Jev; own name so a global OPENROUTER_API_KEY is never picked up
 ROUTER_TIMEOUT_S = _env("ROUTER_TIMEOUT_S", 30.0, float)     # background call; the cycle never waits on it
+JEV_MAX_CALLS_PER_HOUR = _env("JEV_MAX_CALLS_PER_HOUR", 60, int)  # protects OpenRouter credits (~$0.00004/call)
 ROUTER_SHADOW = _env("ROUTER_SHADOW", 1, int)            # also ask the other model, for comparison
+
+# LLM pool (phase 6): text only, templates are the default, LLM only where a human reads
+GROQ_API_KEYS = [k.strip() for k in _env("GROQ_API_KEYS", "").split(",") if k.strip()]
+GEMINI_API_KEYS = [k.strip() for k in _env("GEMINI_API_KEYS", "").split(",") if k.strip()]
+GROQ_MODEL = _env("GROQ_MODEL", "llama-3.3-70b-versatile")
+GEMINI_MODEL = _env("GEMINI_MODEL", "gemini-2.5-flash")
+LLM_TIMEOUT_S = _env("LLM_TIMEOUT_S", 8.0, float)
+LLM_MAX_CONCURRENT = _env("LLM_MAX_CONCURRENT", 8, int)
+LLM_MAX_ATTEMPTS = _env("LLM_MAX_ATTEMPTS", 4, int)          # keys tried per call before template fallback

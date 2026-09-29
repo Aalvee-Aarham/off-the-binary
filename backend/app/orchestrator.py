@@ -9,9 +9,12 @@ from . import config
 from . import metrics as M
 from .detect import Detector
 from .forecast import Forecaster, arrivals, risks as compute_risks
+from .bandit import Bandit
+from .policy import load_active
 from .router import Router, route_rules
 from .sim_client import SimError, SimRejected
-from .solvers import SolverError, check, doomed_routes, evaluate, tournament
+from .llm_pool import SYSTEM, LLMUnavailable, explanation_prompt, incident_prompt, template_explanation, template_incident
+from .solvers import ALGOS, SolverError, check, doomed_routes, evaluate, tournament
 
 log = logging.getLogger("orchestrator")
 TERMINAL = ("ARRIVED", "FAILED", "CANCELLED")
@@ -19,9 +22,14 @@ BUG_CODES = ("IDEMPOTENCY_KEY_MISMATCH", "ROUTE_MISMATCH", "NOT_FOUND", "VALIDAT
 
 
 class Orchestrator:
-    def __init__(self, sim, store, audit, routing=None):
+    def __init__(self, sim, store, audit, routing=None, llm=None):
         self.sim, self.store, self.audit = sim, store, audit
         self.routing = routing or Router()
+        self.llm = llm  # optional; every text has a deterministic template first
+        self.bg = set()
+        self.seen_active = set()
+        self.policy, self.policy_version = load_active()  # PPO; None -> tournament runs without it
+        self.bandit = Bandit([*ALGOS, "ppo"])
         self.fc, self.det = Forecaster(), Detector()
         self.mode = config.MODE
         self.trigger = asyncio.Event()
@@ -70,6 +78,7 @@ class Orchestrator:
             if self.store.reset_seen:
                 log.warning("sim.reset_detected", extra={"event": "sim.reset", "tick": snap["tick"]})
                 self.fc.reset(), self.det.reset()
+                self.seen_active.clear()
                 self.last_decision_tick = -10 ** 9
                 for d in self.audit.list("PENDING_APPROVAL", 200):
                     self._set_status(d, "EXPIRED", "simulator reset")
@@ -111,6 +120,10 @@ class Orchestrator:
             self.audit.alert("resolved", a)
         self.analyzed_tick = snap["tick"]
         self.router = route_rules(self.flags, self.risks, list(self.det.active.values()))
+        for e in snap["events"]:  # incident log: one summary per event activation
+            if e["status"] == "ACTIVE" and e["id"] not in self.seen_active:
+                self.seen_active.add(e["id"])
+                self._incident(e, snap)
         return raised
 
     # ---------- decide ----------
@@ -145,7 +158,7 @@ class Orchestrator:
         router = dict(self.router)
         try:
             t = await asyncio.to_thread(tournament, snap, self.fc, self.paths, self.arr, self.risks,
-                                        router["algorithm"], self.budget)
+                                        router["algorithm"], self.budget, self.policy, self.bandit, router["regime"])
         except SolverError as e:
             M.FALLBACKS.labels("all_solvers_failed").inc()
             log.error("decide.failed", extra={"event": "decide.failed", "error": str(e)})
@@ -154,7 +167,7 @@ class Orchestrator:
         top = sorted(self.risks.values(), key=lambda r: -r["p_stockout"])[:5]
         d = {"id": uuid.uuid4().hex[:12], "created_at": time.time(), "tick": snap["tick"], "sim_time": snap["sim_time"],
              "mode": self.mode, "router": router, "algorithm": t["winner"], "best_algorithm": t["best"],
-             "router_hit": t["router_hit"], "budget_mode": self.budget,
+             "router_hit": t["router_hit"], "budget_mode": self.budget, "ppo_version": self.policy_version,
              "candidates": [{k: c.get(k) for k in ("algorithm", "score", "solve_ms", "error")} |
                             {"shipments": len(c["shipments"]), "p50": (c.get("scenarios") or {}).get("p50")}
                             for c in t["candidates"]],
@@ -165,6 +178,8 @@ class Orchestrator:
             return d
         self.last_decision_tick = snap["tick"]
         self.routing.record_outcome(t["winner"])
+        if not self.budget:  # only full tournaments are fair observations for the bandit
+            self.bandit.update(router["regime"], t["candidates"])
         M.DECISIONS.labels(t["winner"], "auto" if gate["auto"] else "human").inc()
         if not t["shipments"]:
             d["status"] = "NO_ACTION"
@@ -174,11 +189,13 @@ class Orchestrator:
         for old in self.audit.list("PENDING_APPROVAL", 20):  # fresher plan replaces unreviewed ones
             if not old.get("edited_by"):
                 self._set_status(old, "SUPERSEDED", f"replaced by {d['id']}")
+        d["explanation"] = {"text": template_explanation(d), "source": "template"}
         if gate["auto"]:
             await self.execute(d, "auto")
         else:
             d["status"] = "PENDING_APPROVAL"
             self.audit.save(d)
+            self._spawn(self._llm_explain(d["id"]))  # a human will read this one: worth an LLM call
             log.info("decision.pending", extra={"event": "decision.pending", "decision_id": d["id"], "reasons": gate["reasons"]})
         return d
 
@@ -277,6 +294,47 @@ class Orchestrator:
                     d["closed_tick"] = snap["tick"]
                     d["status"] = "COMPLETED" if d["status"] == "EXECUTED" else "COMPLETED_PARTIAL"
                 self.audit.save(d)
+
+    # ---------- LLM (background, never on the decision path) ----------
+    def _spawn(self, coro):
+        t = asyncio.create_task(coro)
+        self.bg.add(t)
+        t.add_done_callback(self.bg.discard)
+
+    async def explain(self, d, use_llm=True):
+        """LLM rewrite of the template when available; the template otherwise. Cached by prompt."""
+        if use_llm and self.llm and self.llm.configured:
+            try:
+                r = await self.llm.complete(SYSTEM, explanation_prompt(d), purpose="explanation")
+                return {"text": r["text"], "source": f"llm:{r['provider']}", "cached": r["cached"]}
+            except LLMUnavailable as e:
+                return {"text": template_explanation(d), "source": "template", "llm_error": str(e)[:200]}
+        return {"text": template_explanation(d), "source": "template"}
+
+    async def _llm_explain(self, did):
+        d = self.audit.get(did)
+        if d:
+            ex = await self.explain(d)
+            d = self.audit.get(did)  # may have changed while we waited
+            if d:
+                d["explanation"] = ex
+                self.audit.save(d)
+
+    def _incident(self, e, snap):
+        risks = sorted((self.risks or {}).values(), key=lambda r: -r["p_stockout"])
+        text = template_incident(e, snap, risks)
+        self.audit.alert("incident", {"type": f"incident:{e['type']}", "severity": "info", "entity": f"event-{e['id']}",
+                                      "tick": snap["tick"], "message": text})
+        if self.llm and self.llm.configured:
+            async def rewrite():
+                try:
+                    r = await self.llm.complete(SYSTEM, incident_prompt(e, snap, risks), max_tokens=250, purpose="incident")
+                    self.audit.alert("incident", {"type": f"incident:{e['type']}", "severity": "info",
+                                                  "entity": f"event-{e['id']}", "tick": snap["tick"],
+                                                  "message": f"[{r['provider']}] {r['text']}"[:1500]})
+                except LLMUnavailable:
+                    pass  # the template summary is already logged
+            self._spawn(rewrite())
 
     async def _cancel_doomed(self, snap):
         """A PENDING allocation on a route that is (or is about to be) disrupted will FAIL and lose its fuel.

@@ -16,6 +16,8 @@ from . import config
 from . import metrics as M
 from . import sse
 from .audit import Audit
+from .llm_pool import SYSTEM, LLMPool, LLMUnavailable
+from . import policy as ppo
 from .orchestrator import Orchestrator
 from .router import Router
 from .sim_client import SimClient, SimError, SimRejected
@@ -45,7 +47,8 @@ def build_router(model_transport=None):
     laya = SystemOneClient("laya", config.LAYA_URL, model=config.LAYA_MODEL, timeout=config.ROUTER_TIMEOUT_S,
                            transport=model_transport) if config.LAYA_URL else None
     jev = SystemOneClient("jev", config.JEV_URL, api_key=config.JEV_API_KEY, model=config.JEV_MODEL,
-                          timeout=config.ROUTER_TIMEOUT_S, transport=model_transport) if config.JEV_API_KEY else None
+                          timeout=config.ROUTER_TIMEOUT_S, transport=model_transport,
+                          max_calls_per_hour=config.JEV_MAX_CALLS_PER_HOUR) if config.JEV_API_KEY else None
     return Router({"laya": laya, "jev": jev})
 
 
@@ -76,7 +79,7 @@ class Observe:
                 M.WINDOW.add(dt, status[0] >= 500)
 
 
-def create_app(transport=None, start_loops=True, model_transport=None):
+def create_app(transport=None, start_loops=True, model_transport=None, llm_transport=None):
     """transport: inject an httpx transport (tests / in-process devsim)."""
 
     @asynccontextmanager
@@ -84,7 +87,9 @@ def create_app(transport=None, start_loops=True, model_transport=None):
         setup_logging()
         sim = SimClient(config.SIM_BASE_URL, transport=transport)
         store = StateStore(sim)
-        orch = Orchestrator(sim, store, Audit(config.DB_PATH), build_router(model_transport))
+        audit = Audit(config.DB_PATH)
+        llm = LLMPool(config.GROQ_API_KEYS, config.GEMINI_API_KEYS, audit, transport=llm_transport)
+        orch = Orchestrator(sim, store, audit, build_router(model_transport), llm)
         app.state.sim, app.state.orch = sim, orch
         tasks = []
         if start_loops:
@@ -135,7 +140,7 @@ def create_app(transport=None, start_loops=True, model_transport=None):
                                 "budget_mode": o.budget},
             "ml_service": await model_health(o, "laya"),
             "jev": await model_health(o, "jev"),
-            "llm_pool": {"status": "not_configured"},
+            "llm_pool": o.llm.health() if o.llm else {"status": "not_configured"},
         }
         states = [c["status"] for c in comps.values()]
         overall = "down" if "down" in states[:4] else "degraded" if "degraded" in states else "healthy"
@@ -173,6 +178,37 @@ def create_app(transport=None, start_loops=True, model_transport=None):
         logging.getLogger("api").info("router.primary", extra={"event": "router.primary", "primary": body.primary, "actor": who})
         return {"primary": body.primary}
 
+    @app.get("/api/models")
+    async def models(request: Request):
+        o = orch(request)
+        return {"ppo": {"active": o.policy_version, "loaded": o.policy is not None, "versions": ppo.versions()},
+                "bandit": o.bandit.table()}
+
+    class Promote(BaseModel):
+        version: str = Field(pattern=r"^v[0-9]{1,4}$")
+
+    @app.post("/api/models/ppo/promote")
+    async def promote(body: Promote, request: Request, who: str = Depends(admin)):
+        try:
+            ppo.set_active(body.version)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
+        o = orch(request)
+        o.policy, o.policy_version = ppo.load_active()
+        logging.getLogger("api").info("model.promoted", extra={"event": "model.promoted", "version": body.version, "actor": who})
+        return {"active": o.policy_version}
+
+    @app.post("/api/models/ppo/rollback")
+    async def rollback(request: Request, who: str = Depends(admin)):
+        try:
+            v = ppo.rollback()
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        o = orch(request)
+        o.policy, o.policy_version = ppo.load_active()
+        logging.getLogger("api").info("model.rollback", extra={"event": "model.rollback", "version": v, "actor": who})
+        return {"active": o.policy_version}
+
     @app.get("/api/state")
     async def state(request: Request):
         o = orch(request)
@@ -201,6 +237,42 @@ def create_app(transport=None, start_loops=True, model_transport=None):
         if not d:
             raise HTTPException(404, "decision not found")
         return d
+
+    @app.get("/api/decisions/{did}/explain")
+    async def explain(did: str, request: Request, llm: bool = True):
+        """Human-readable explanation. Template always; LLM rewrite when keys work (cached per decision)."""
+        o = orch(request)
+        d = o.audit.get(did)
+        if not d:
+            raise HTTPException(404, "decision not found")
+        if llm and (d.get("explanation") or {}).get("source", "").startswith("llm"):
+            return d["explanation"]
+        return await o.explain(d, use_llm=llm)
+
+    class Ask(BaseModel):
+        question: str = Field(min_length=3, max_length=500)
+
+    @app.post("/api/ask")
+    async def ask(body: Ask, request: Request, who: str = Depends(admin)):
+        """Operator investigation assistant over the *current* simulated state. Admin-only: it spends LLM quota."""
+        o = orch(request)
+        v = view_or_503(o)
+        recent = [{k: d.get(k) for k in ("tick", "status", "algorithm")} | {"shipments": len(d.get("shipments") or [])}
+                  for d in o.audit.list(limit=5)]
+        ctx = {"tick": v["tick"], "sim_time": v["sim_time"], "service_level": v["metrics"]["service_level"],
+               "unmet_l": v["metrics"]["unmet_demand_liters"], "regime": (v["router"] or {}).get("regime"),
+               "top_risks": [{k: r[k] for k in ("station_id", "fuel", "inventory", "p_stockout", "hours_to_stockout")}
+                             for r in v["risks"][:6]],
+               "alerts": [a["message"] for a in v["alerts"][:8]], "events": v["events"][:6],
+               "depots": {d["id"]: {"status": d["status"], "inventory": d["inventory"]} for d in v["depots"]},
+               "disrupted_routes": [r["id"] for r in v["routes"] if r["status"] != "AVAILABLE"],
+               "recent_decisions": recent}
+        try:
+            r = await o.llm.complete(SYSTEM, f"Operator question: {body.question}\nCurrent state: {ctx}", max_tokens=400,
+                                     purpose="ask")
+            return {"answer": r["text"], "source": f"llm:{r['provider']}", "cached": r["cached"], "tick": v["tick"]}
+        except LLMUnavailable as e:
+            return {"answer": None, "source": "unavailable", "error": str(e)[:200], "context": ctx}
 
     @app.post("/api/decisions/recommend")
     async def recommend(request: Request):

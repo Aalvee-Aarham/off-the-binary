@@ -66,3 +66,8 @@ SYSTEMONE_LAT = Histogram("systemone_duration_seconds", "System-One latency", ["
                           buckets=(.025, .05, .1, .2, .3, .5, .75, 1, 1.5, 2, 3))
 ROUTER_AGREE = Counter("router_rules_agreement_total", "Model regime vs rule regime", ["model", "agree"])
 ROUTER_CACHE = Counter("router_cache_total", "Router signature cache", ["result"])
+# LLM pool
+LLM_CALLS = Counter("llm_calls_total", "LLM calls", ["provider", "key", "outcome"])
+LLM_LAT = Histogram("llm_duration_seconds", "LLM latency", ["provider"], buckets=(.25, .5, 1, 2, 3, 5, 8))
+# learning
+BANDIT_MEAN = Gauge("bandit_win_rate", "Posterior mean P(algorithm wins tournament) per regime", ["regime", "algorithm"])

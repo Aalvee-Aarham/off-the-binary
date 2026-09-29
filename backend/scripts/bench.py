@@ -5,7 +5,8 @@ import time
 
 from app import config
 from app.forecast import Forecaster, arrivals, risks
-from app.solvers import ALGOS, build_problem, check, finalize, tournament
+from app.policy import features, load_active
+from app.solvers import ALGOS, algo_ppo, build_problem, check, finalize, tournament
 from app.world import Twin, baseline_world
 
 H = config.HORIZON_TICKS
@@ -18,7 +19,8 @@ def crisis(tw):
     tw.add_event("supply_shortfall", 120, 1, {"factor": 0.5})
 
 
-def run(policy, ticks=400, scenario=None, seed=1, every=2):
+def run(policy, ticks=400, scenario=None, seed=1, every=2, ppo=None):
+    """policy: none | an ALGOS name | ppo | tournament. `ppo` = a PPOPolicy (tournament includes it when given)."""
     w = baseline_world()
     w["seed"] = seed
     tw = Twin(w)
@@ -36,7 +38,9 @@ def run(policy, ticks=400, scenario=None, seed=1, every=2):
         r = risks(s, fc, p, a, H)
         t0 = time.perf_counter()
         if policy == "tournament":
-            ships = tournament(s, fc, p, a, r, "lp")["shipments"]
+            ships = tournament(s, fc, p, a, r, "mpc", policy=ppo)["shipments"]
+        elif policy == "ppo":
+            ships, _ = check(finalize(algo_ppo(build_problem(s, fc, p, a, r), ppo.act(features(s, r, p))), s), s)
         else:
             ships, _ = check(finalize(ALGOS[policy](build_problem(s, fc, p, a, r)), s), s)
         ms.append((time.perf_counter() - t0) * 1000)
@@ -49,7 +53,10 @@ def run(policy, ticks=400, scenario=None, seed=1, every=2):
 
 if __name__ == "__main__":
     ticks = int(sys.argv[1]) if len(sys.argv) > 1 else 400
+    model, version = load_active()
     for name, sc in (("normal", None), ("combined crisis", crisis)):
         print(f"== {name} ({ticks} ticks)")
-        for pol in ("none", *[a for a in ALGOS if a != "hold"], "tournament"):
-            print(f"  {pol:11s} {run(pol, ticks, sc)}")
+        pols = ["none", *[a for a in ALGOS if a != "hold"]] + (["ppo"] if model else []) + ["tournament"]
+        for pol in pols:
+            print(f"  {pol:11s} {run(pol, ticks, sc, ppo=model)}")
+    print("ppo model:", version or "none promoted")

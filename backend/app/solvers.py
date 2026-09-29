@@ -55,14 +55,15 @@ def needs(P, scale=1.0, z=0.0):
             inv, cap = s["inventory"][f], s["capacity"][f]
             pos_before = max(0.0, inv + a[1:k + 1].sum() - d[:k - 1].sum())
             cover = d[k - 1:k - 1 + COVER].sum()
-            target = cover * (1 + z * P.sigma[(s["id"], f)])
+            zk = z.get((s["id"], f), 0.0) if isinstance(z, dict) else z
+            target = cover * (1 + zk * P.sigma[(s["id"], f)])
             later = a[k + 1:k + COVER].sum()
             head = max(0.0, min(cap - inv, cap - pos_before))
             out[(s["id"], f)] = (min(max(0.0, target - pos_before - later), head), head, tmin)
     return out
 
 
-def _lp(P, N, *, fair=False, min_in=None):
+def _lp(P, N, *, fair=False, min_in=None, weights=None):
     xs = [(r, f) for r in P.routes for f in FUELS]
     keys = [k for k, v in N.items() if v[0] > 1]
     if not xs or (not keys and not min_in):
@@ -74,7 +75,7 @@ def _lp(P, N, *, fair=False, min_in=None):
         c += [-1000.0]
         bounds = [(0, None)] * nx + [(0, 1)]
     else:
-        c += [1 + 4 * P.risks[k]["p_stockout"] for k in keys]
+        c += [(weights or {}).get(k, 1 + 4 * P.risks[k]["p_stockout"]) for k in keys]
         bounds = [(0, None)] * (nx + nk)
     nv = len(c)
     A, b = [], []
@@ -269,6 +270,13 @@ def algo_mpc(P):
             if t == 0 and res.x[idx[("x", rid, f, t)]] > 1]
 
 
+def algo_ppo(P, action):
+    """RL policy: PPO picks per-series priority weights and safety factors; the LP keeps it feasible."""
+    from .policy import decode
+    w, z = decode(action, P.snap)
+    return _lp(P, needs(P, scale=1.0, z=z), weights=w)[0]
+
+
 ALGOS = {"greedy": algo_greedy, "lp": algo_lp, "robust_lp": algo_robust_lp, "mpc": algo_mpc,
          "rationing": algo_rationing, "hold": lambda P: []}
 
@@ -360,17 +368,29 @@ def evaluate(ships, snap, fc, scale=1.0, ticks=config.EVAL_TICKS):
             "failed": tw.totals["failed"]}
 
 
-def tournament(snap, fc, paths, arr, risks, router_pick, budget=False):
+def tournament(snap, fc, paths, arr, risks, router_pick, budget=False, policy=None, bandit=None, regime=None):
     """Every candidate plans; each plan is scored on the twin under 3 demand scenarios; best robust score wins.
-    The router's pick wins near-ties (<=2%) for stability."""
+    The router's pick wins near-ties (<=2%) for stability. `policy` adds the PPO candidate. In budget mode the
+    bandit's Thompson draw picks which 2 extra candidates run next to the router's pick and `hold`."""
     P = build_problem(snap, fc, paths, arr, risks)
-    names = list(ALGOS) if not budget else list(dict.fromkeys([router_pick, "lp", "greedy", "hold"]))
+    algos = dict(ALGOS)
+    if policy is not None:
+        from .policy import features
+        action = policy.act(features(snap, risks, paths))
+        algos["ppo"] = lambda P: algo_ppo(P, action)
+    if not budget:
+        names = list(algos)
+    else:
+        pool = [a for a in algos if a not in (router_pick, "hold")]
+        extra = bandit.top(regime, 2, pool) if bandit else ["mpc", "lp"]
+        names = list(dict.fromkeys([router_pick, *extra, "hold"]))
+    names = [n for n in names if n in algos]
     cands, seen = [], {}
     for name in names:
         t0 = time.perf_counter()
         c = {"algorithm": name}
         try:
-            ships, rejected = check(finalize(ALGOS[name](P), snap), snap)
+            ships, rejected = check(finalize(algos[name](P), snap), snap)
             c.update(shipments=ships, rejected=rejected)
         except Exception as e:  # a broken solver must never break the cycle
             c.update(error=f"{type(e).__name__}: {e}", shipments=[])
