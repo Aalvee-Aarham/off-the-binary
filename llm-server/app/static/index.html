@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Server Tester</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1b1f24; --muted: #5f6b7a; --border: #d9dee5;
+    --accent: #2563eb; --accent-text: #ffffff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c; --code: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #171b21; --text: #e6e9ee; --muted: #93a0b0; --border: #2a313a;
+      --accent: #3b82f6; --accent-text: #ffffff; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --code: #11151a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  main { display: grid; grid-template-columns: 240px 1fr; gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+  textarea { resize: vertical; min-height: 70px; }
+  textarea.code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; min-height: 140px; }
+  button { padding: 7px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button:disabled { opacity: .55; cursor: progress; }
+  .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 110px; }
+  .conn { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; min-width: 280px; }
+  .conn input { flex: 1; min-width: 160px; width: auto; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { border-radius: 6px; }
+  .tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .model { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .model:last-child { border-bottom: 0; }
+  .model b { display: block; font-size: 13px; }
+  .model small { font-size: 12px; }
+  .model button { padding: 3px 8px; font-size: 12px; }
+  .out { margin-top: 14px; }
+  .answer { white-space: pre-wrap; background: var(--code); border: 1px solid var(--border); border-radius: 6px; padding: 12px; min-height: 48px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 8px 0; }
+  details { margin-top: 8px; }
+  pre { background: var(--code); border: 1px solid var(--border); border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; max-height: 360px; }
+  .chat { max-height: 380px; overflow-y: auto; margin-bottom: 10px; }
+  .msg { padding: 8px 10px; border-radius: 6px; margin: 6px 0; white-space: pre-wrap; border: 1px solid var(--border); }
+  .msg.user { background: var(--code); }
+  .msg .who { font-size: 11px; color: var(--muted); display: block; }
+  .bar { height: 8px; background: var(--accent); border-radius: 4px; }
+  .scores td { padding: 3px 8px 3px 0; font-size: 13px; }
+  .scores td:last-child { width: 50%; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>LLM Server Tester</h1>
+  <span id="health" class="pill muted">checking…</span>
+  <div class="conn">
+    <input id="baseUrl" placeholder="Server URL (blank = this server)" aria-label="Server URL">
+    <input id="apiKey" type="password" placeholder="API key" aria-label="API key">
+    <button id="connect">Connect</button>
+  </div>
+</header>
+
+<main>
+  <aside class="panel">
+    <h2>Models</h2>
+    <div id="models" class="muted">–</div>
+  </aside>
+
+  <section class="panel">
+    <div class="tabs" role="tablist">
+      <button data-tab="generate" class="active">Generate</button>
+      <button data-tab="chat">Chat</button>
+      <button data-tab="structured">Structured JSON</button>
+      <button data-tab="classify">Classify</button>
+    </div>
+
+    <div class="row">
+      <div><label for="model">Model</label><select id="model"></select></div>
+      <div><label for="maxTokens">Max tokens</label><input id="maxTokens" type="number" value="200" min="1" max="4096"></div>
+      <div><label for="temperature">Temperature</label><input id="temperature" type="number" value="0.7" min="0" max="2" step="0.1"></div>
+    </div>
+
+    <!-- Generate -->
+    <div data-pane="generate">
+      <label for="gSystem">System prompt (optional)</label>
+      <input id="gSystem" placeholder="You are a concise fuel logistics assistant.">
+      <label for="gPrompt">Prompt</label>
+      <textarea id="gPrompt">In two sentences, why should a fuel depot forecast demand per station?</textarea>
+    </div>
+
+    <!-- Chat -->
+    <div data-pane="chat" class="hidden">
+      <div id="chatLog" class="chat"></div>
+      <label for="cInput">Message</label>
+      <textarea id="cInput" placeholder="Type a message… (Ctrl+Enter to send)"></textarea>
+    </div>
+
+    <!-- Structured -->
+    <div data-pane="structured" class="hidden">
+      <label for="sPrompt">Prompt</label>
+      <textarea id="sPrompt">Station S-3 reports it needs 4500 litres of diesel before tonight, it is urgent.</textarea>
+      <label for="sSchema">JSON Schema</label>
+      <textarea id="sSchema" class="code">{
+  "type": "object",
+  "properties": {
+    "station": {"type": "string"},
+    "fuel": {"type": "string", "enum": ["diesel", "petrol", "octane"]},
+    "litres": {"type": "number"},
+    "urgent": {"type": "boolean"}
+  },
+  "required": ["station", "fuel", "litres", "urgent"]
+}</textarea>
+    </div>
+
+    <!-- Classify -->
+    <div data-pane="classify" class="hidden">
+      <label for="kText">Text</label>
+      <textarea id="kText">Depot D1 diesel inventory dropped 40% in 2 hours and three stations report empty tanks.</textarea>
+      <label for="kLabels">Labels (comma separated)</label>
+      <input id="kLabels" value="normal, shortage, demand_surge, route_disruption">
+      <label for="kInstr">Instruction (optional)</label>
+      <input id="kInstr" value="Classify the fuel supply situation.">
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div style="flex:0 0 auto"><button id="send" class="primary">Send</button></div>
+      <div style="flex:0 0 auto"><button id="clearChat" class="hidden">Clear chat</button></div>
+      <label style="flex:1;margin:0;display:flex;gap:6px;align-items:center">
+        <input id="noCache" type="checkbox" style="width:auto"> bypass cache
+      </label>
+    </div>
+
+    <div class="out">
+      <div id="answer" class="answer muted">Response will appear here.</div>
+      <div id="meta" class="meta"></div>
+      <details><summary class="muted">Raw JSON</summary><pre id="raw">–</pre></details>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d = "") { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+let tab = "generate";
+let chat = [];
+
+$("baseUrl").value = store.get("llm.baseUrl");
+$("apiKey").value = store.get("llm.apiKey");
+
+function base() {
+  const b = $("baseUrl").value.trim().replace(/\/+$/, "");
+  // Opened as a local file -> default to a local server.
+  return b || (location.protocol.startsWith("http") ? location.origin : "http://localhost:8000");
+}
+
+async function api(path, body, method) {
+  const headers = { "Content-Type": "application/json" };
+  const key = $("apiKey").value.trim();
+  if (key) headers["Authorization"] = "Bearer " + key;
+  const t0 = performance.now();
+  const res = await fetch(base() + path, {
+    method: method || (body ? "POST" : "GET"),
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  return { ok: res.ok, status: res.status, data, ms: performance.now() - t0 };
+}
+
+async function refresh() {
+  try {
+    const h = await api("/health");
+    const s = h.data && h.data.status || "error";
+    const cls = s === "ok" ? "ok" : s === "degraded" ? "warn" : "bad";
+    $("health").className = "pill " + cls;
+    $("health").textContent = s;
+  } catch (e) {
+    $("health").className = "pill bad";
+    $("health").textContent = "unreachable";
+  }
+  try {
+    const m = await api("/api/models");
+    if (!m.ok) {
+      $("models").innerHTML = `<span class="bad">${m.status === 401 ? "Enter the API key" : "Error " + m.status}</span>`;
+      return;
+    }
+    const sel = $("model"), prev = sel.value || store.get("llm.model");
+    sel.innerHTML = m.data.models.map(x => `<option value="${x.id}">${x.id}${x.ready ? "" : " (" + x.state + ")"}</option>`).join("");
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+    else sel.value = m.data.default_model;
+    $("models").innerHTML = m.data.models.map(x => {
+      const cls = x.ready ? "ok" : x.state === "starting" ? "warn" : "bad";
+      const btn = x.state === "stopped"
+        ? `<button data-act="start" data-id="${x.id}">Start</button>`
+        : `<button data-act="stop" data-id="${x.id}">Stop</button>`;
+      return `<div class="model"><div><b>${x.id}</b><small class="${cls}">${x.state}</small>` +
+             `${x.load_time_s ? `<small class="muted"> · loaded in ${x.load_time_s}s</small>` : ""}</div>${btn}</div>`;
+    }).join("");
+  } catch (e) {
+    $("models").innerHTML = `<span class="bad">Cannot reach server</span>`;
+  }
+}
+
+$("models").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-act]");
+  if (!b) return;
+  b.disabled = true;
+  await api(`/api/admin/models/${b.dataset.id}/${b.dataset.act}`, {}, "POST");
+  setTimeout(refresh, 500);
+});
+
+$("connect").onclick = () => {
+  store.set("llm.baseUrl", $("baseUrl").value.trim());
+  store.set("llm.apiKey", $("apiKey").value.trim());
+  refresh();
+};
+$("model").onchange = () => store.set("llm.model", $("model").value);
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll("[data-pane]").forEach(p => p.classList.toggle("hidden", p.dataset.pane !== tab));
+  $("clearChat").classList.toggle("hidden", tab !== "chat");
+  if (tab === "structured" || tab === "classify") $("temperature").value = 0;
+});
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function renderChat() {
+  $("chatLog").innerHTML = chat.map(m =>
+    `<div class="msg ${m.role}"><span class="who">${m.role}</span>${esc(m.content)}</div>`).join("");
+  $("chatLog").scrollTop = $("chatLog").scrollHeight;
+}
+$("clearChat").onclick = () => { chat = []; renderChat(); };
+$("cInput").addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) send(); });
+
+function common() {
+  return {
+    model: $("model").value || undefined,
+    max_tokens: parseInt($("maxTokens").value, 10) || 200,
+    temperature: parseFloat($("temperature").value) || 0,
+    use_cache: !$("noCache").checked,
+  };
+}
+
+async function send() {
+  let path, body;
+  if (tab === "generate") {
+    path = "/api/generate";
+    body = { ...common(), prompt: $("gPrompt").value, system: $("gSystem").value || undefined };
+  } else if (tab === "chat") {
+    const text = $("cInput").value.trim();
+    if (!text) return;
+    chat.push({ role: "user", content: text });
+    $("cInput").value = "";
+    renderChat();
+    path = "/api/chat";
+    body = { ...common(), messages: chat };
+  } else if (tab === "structured") {
+    let schema;
+    try { schema = JSON.parse($("sSchema").value); }
+    catch (e) { showError("Schema is not valid JSON: " + e.message); return; }
+    path = "/api/structured";
+    body = { ...common(), prompt: $("sPrompt").value, schema };
+  } else {
+    path = "/api/classify";
+    const c = common();
+    body = {
+      model: c.model, use_cache: c.use_cache, text: $("kText").value,
+      labels: $("kLabels").value.split(",").map(s => s.trim()).filter(Boolean),
+      instruction: $("kInstr").value || undefined,
+    };
+  }
+
+  $("send").disabled = true;
+  $("send").textContent = "Running…";
+  $("answer").className = "answer muted";
+  $("answer").textContent = "…";
+  try {
+    const r = await api(path, body);
+    $("raw").textContent = typeof r.data === "string" ? r.data : JSON.stringify(r.data, null, 2);
+    if (!r.ok) {
+      const d = r.data && r.data.detail;
+      showError(`HTTP ${r.status}: ${typeof d === "string" ? d : JSON.stringify(d ?? r.data)}`);
+      if (tab === "chat") chat.pop(), renderChat();
+      return;
+    }
+    const d = r.data;
+    $("answer").className = "answer";
+    if (tab === "structured") {
+      $("answer").textContent = JSON.stringify(d.data, null, 2);
+    } else if (tab === "classify") {
+      const rows = Object.entries(d.scores || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+        `<tr><td>${esc(k)}</td><td>${(v * 100).toFixed(1)}%</td><td><div class="bar" style="width:${Math.max(v * 100, 1)}%"></div></td></tr>`).join("");
+      $("answer").innerHTML = `<div style="font-size:18px;font-weight:600">${esc(d.label)}</div>` +
+        `<div class="muted">confidence: ${d.confidence == null ? "n/a" : (d.confidence * 100).toFixed(1) + "%"}` +
+        `${d.confidence != null && d.confidence < 0.6 ? ' <span class="warn">→ human review</span>' : ""}</div>` +
+        (rows ? `<table class="scores" style="margin-top:8px;width:100%">${rows}</table>` : "");
+    } else {
+      $("answer").textContent = d.text || "(empty)";
+      if (tab === "chat") { chat.push({ role: "assistant", content: d.text || "" }); renderChat(); }
+    }
+    const bits = [
+      `model: <b>${esc(d.model)}</b>`,
+      `server: ${d.latency_ms} ms`,
+      `round-trip: ${r.ms.toFixed(0)} ms`,
+      d.tokens_per_second ? `${d.tokens_per_second} tok/s` : null,
+      d.usage ? `tokens: ${d.usage.prompt_tokens} in / ${d.usage.completion_tokens} out` : null,
+      d.finish_reason ? `finish: ${d.finish_reason}` : null,
+      d.cached ? '<span class="ok">cached</span>' : null,
+      d.fallback_used ? '<span class="warn">fallback used</span>' : null,
+    ].filter(Boolean);
+    $("meta").innerHTML = bits.join(" · ");
+  } catch (e) {
+    showError("Request failed: " + e.message + " (server unreachable, or CORS/URL wrong)");
+  } finally {
+    $("send").disabled = false;
+    $("send").textContent = "Send";
+  }
+}
+
+function showError(msg) {
+  $("answer").className = "answer bad";
+  $("answer").textContent = msg;
+  $("meta").innerHTML = "";
+}
+
+$("send").onclick = send;
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

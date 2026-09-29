@@ -1,0 +1,9 @@
+models/
+.tools/
+.venv/
+logs/
+deploy/
+**/__pycache__/
+*.md
+.env
+.git

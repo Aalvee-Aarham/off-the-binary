@@ -1,0 +1,17 @@
+services:
+  llm-server:
+    build: .
+    image: bup-llm-server:latest
+    container_name: llm-server
+    ports:
+      - "8100:8000"   # host 8100 (8000 is the fuel simulator)
+    environment:
+      API_KEY: ${API_KEY:-}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-smollm2-360m}
+      ENABLED_MODELS: ${ENABLED_MODELS:-}
+      LLAMA_THREADS: ${LLAMA_THREADS:-0}
+      CACHE_SIZE: ${CACHE_SIZE:-1024}
+      CACHE_TTL_S: ${CACHE_TTL_S:-3600}
+      REQUEST_TIMEOUT_S: ${REQUEST_TIMEOUT_S:-120}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped

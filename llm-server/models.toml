@@ -1,0 +1,44 @@
+# Model registry.
+# The gateway starts one llama-server process per [[models]] entry and
+# supervises it (health checks, automatic restart on crash).
+#
+# Changing this file inside Docker requires an image rebuild (models are baked in).
+
+[server]
+# Default model when a request does not name one.
+default_model = "smollm2-360m"
+# Order used when the requested model is down and allow_fallback=true.
+fallback_order = ["smollm2-360m", "gemma3-1b", "smollm2-1.7b"]
+
+[[models]]
+id          = "smollm2-360m"
+aliases     = ["small", "fast", "smollm2-360m-instruct", "SmolLM2-360M-Instruct"]
+description = "SmolLM2 360M Instruct (Q8_0). Fastest; routing, classification, short answers."
+repo        = "bartowski/SmolLM2-360M-Instruct-GGUF"
+file        = "SmolLM2-360M-Instruct-Q8_0.gguf"
+port        = 8081
+ctx_size    = 8192   # SmolLM2 max context
+parallel    = 4      # concurrent request slots (share ctx_size)
+threads     = 0      # 0 = let llama.cpp decide (physical cores)
+
+[[models]]
+id          = "gemma3-1b"
+aliases     = ["gemma", "gemma-3-1b", "gemma-3-1b-it", "gemma3"]
+description = "Gemma 3 1B IT (Q4_K_M). Best quality/speed balance; explanations, JSON extraction."
+repo        = "ggml-org/gemma-3-1b-it-GGUF"
+file        = "gemma-3-1b-it-Q4_K_M.gguf"
+port        = 8082
+ctx_size    = 8192
+parallel    = 4
+threads     = 0
+
+[[models]]
+id          = "smollm2-1.7b"
+aliases     = ["medium", "smollm2-1.7b-instruct", "SmolLM2-1.7B-Instruct"]
+description = "SmolLM2 1.7B Instruct (Q4_K_M). Largest; longer reasoning and summaries."
+repo        = "bartowski/SmolLM2-1.7B-Instruct-GGUF"
+file        = "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
+port        = 8083
+ctx_size    = 4096   # no GQA -> large KV cache per token; keep it modest
+parallel    = 2
+threads     = 0

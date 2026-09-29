@@ -1,0 +1,10 @@
+models/*.gguf
+models/*.part
+.tools/
+.venv/
+logs/
+__pycache__/
+.env
+deploy/.azure-state.env
+deploy/cloud-init.generated.yaml
+deploy/vm-rerun.generated.sh
