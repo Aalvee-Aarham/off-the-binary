@@ -179,6 +179,8 @@ def decision_facts(d):
                   f"{config.EVAL_TICKS} ticks" if wa else "n/a",
         "review_reasons": (d.get("gate") or {}).get("reasons", []),
         "alerts": [a["message"] for a in d.get("alerts", [])[:5]],
+        "constraints": d.get("constraints", []),
+        "notes": (d.get("gate") or {}).get("notes", []),
     }
 
 
@@ -194,6 +196,10 @@ def template_explanation(d):
     parts.append(f"Expected (simulated): {f['impact']}.")
     if f["alternatives"]:
         parts.append("Alternatives scored: " + ", ".join(f["alternatives"]) + " (lower is better).")
+    if f["constraints"]:
+        parts.append("Constraints: " + "; ".join(f["constraints"]) + ".")
+    if f["notes"]:
+        parts.append("Notes: " + "; ".join(f["notes"]) + ".")
     if f["review_reasons"]:
         parts.append("Held for review because: " + "; ".join(f["review_reasons"]) + ".")
     return " ".join(parts)

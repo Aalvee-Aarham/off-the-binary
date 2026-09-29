@@ -22,6 +22,25 @@ def depot_cover(snap, paths, depot_id, fuel):
     return cover, need_ticks
 
 
+def supply_outlook(snap, paths):
+    """Per depot x fuel: stock, scheduled supply still to come, home-region burn rate, days of cover, and when the
+    supply schedule ends (after that depots only drain whatever the policy does)."""
+    per_day = 1440 / snap["tick_minutes"]
+    out = []
+    for did, d in snap["depots"].items():
+        home = [s["id"] for s in snap["stations"].values() if s["region_id"] == d["region_id"]]
+        for f in FUELS:
+            rate = sum(float(np.mean(paths[(sid, f)])) for sid in home) or 1e-6
+            upcoming = [a for a in snap["supply"] if a["depot_id"] == did and a["fuel_type"] == f and a["status"] != "ARRIVED"]
+            out.append({"depot_id": did, "fuel": f, "stock": round(d["inventory"][f]),
+                        "scheduled_liters": round(sum(a["quantity"] for a in upcoming)),
+                        "next_supply_tick": min((a["planned_tick"] for a in upcoming), default=None),
+                        "schedule_ends_tick": max((a["planned_tick"] for a in upcoming), default=None),
+                        "days_of_cover": round(d["inventory"][f] / rate / per_day, 2),
+                        "days_of_cover_incl_schedule": round((d["inventory"][f] + sum(a["quantity"] for a in upcoming)) / rate / per_day, 2)})
+    return out
+
+
 class Detector:
     def __init__(self):
         self.active = {}  # key -> alert
@@ -55,6 +74,13 @@ class Detector:
                 if fc.alarm_tick.get((s["id"], f), -99) >= snap["tick"] - 4:
                     add("demand_anomaly", f"{s['id']}/{f}", "warning", f"{s['id']} {f}: demand shift not explained by model")
                     flags.add("demand_spike")
+        for s in snap["stations"].values():  # A16: the binding constraint in this world is route redundancy
+            usable = [r for r in snap["routes"].values() if r["destination_station_id"] == s["id"] and r["status"] == "AVAILABLE"]
+            worst = max((risks[(s["id"], f)]["p_stockout"] for f in FUELS), default=0)
+            if s["status"] == "OPEN" and len(usable) <= 1 and worst >= 0.3:
+                only = usable[0]["id"] if usable else "none"
+                add("bottleneck", s["id"], "critical" if not usable else "warning",
+                    f"{s['id']} depends on a single route ({only}) with p(stockout) {worst:.0%}")
         for r in snap["routes"].values():
             if r["status"] != "AVAILABLE":
                 add("route_disruption", r["id"], "warning", f"{r['id']} is {r['status']}")

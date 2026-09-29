@@ -227,6 +227,17 @@ def create_app(transport=None, start_loops=True, model_transport=None, llm_trans
         o = orch(request)
         return {"active": list(o.det.active.values()), "history": o.audit.alerts(limit)}
 
+    @app.get("/api/timeline")
+    async def timeline(request: Request, limit: int = Query(300, ge=1, le=1000)):
+        """Ground-truth incident timeline from the simulator's audit log (event start/resolve, supply, faults)."""
+        o = orch(request)
+        try:
+            rows = await o.sim.admin("GET", f"/admin/audit?limit={limit}")
+        except SimError as e:
+            raise HTTPException(503, {"code": e.code, "message": e.message})
+        keep = ("event.", "supply.", "fault.", "admin.", "allocation.failed", "allocation.cancelled")
+        return [r for r in rows if str(r.get("action", "")).startswith(keep)]
+
     @app.get("/api/decisions")
     async def decisions(request: Request, status: str | None = None, limit: int = 50):
         return orch(request).audit.list(status, max(1, min(limit, 500)))

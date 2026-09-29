@@ -131,3 +131,22 @@ def test_doomed_route_blocked_and_pending_cancelled():
         assert snap["depots"]["depot-gazipur"]["inventory"]["DIESEL"] == inv + 1000  # refunded, not lost
 
     asyncio.run(go())
+
+
+def test_view_regions_outlook_constraints_recovery_and_demand_store():
+    async def go():
+        sim, store, o = stack()
+        devsim.S.tw.add_event("station_outage", 12, 6, {"station_ids": ["station-mirpur"]})
+        for _ in range(30):
+            devsim.S.step()
+            await o.cycle(force=devsim.S.tw.tick % 4 == 0)
+        v = o.view
+        assert {r["id"] for r in v["regions"]} == {"region-dhaka", "region-chattogram"}
+        assert len(v["supply_outlook"]) == 6 and all("days_of_cover" in x for x in v["supply_outlook"])
+        assert v["scenario"]["epoch"] == o.epoch
+        assert o.audit.demand_count(o.epoch) >= 12 * 25  # demand history persisted locally
+        shipped = [d for d in o.audit.list(limit=100) if d.get("shipments")]
+        assert shipped and all(d.get("constraints") for d in shipped)
+        assert o.last_recovery and o.last_recovery["ticks"] > 0  # the outage raised a critical alert and recovered
+
+    asyncio.run(go())

@@ -7,7 +7,8 @@ import uuid
 
 from . import config
 from . import metrics as M
-from .detect import Detector
+from .detect import Detector, supply_outlook
+from .world import FUELS
 from .forecast import Forecaster, arrivals, risks as compute_risks
 from .bandit import Bandit
 from .policy import load_active
@@ -18,6 +19,25 @@ from .solvers import ALGOS, SolverError, check, doomed_routes, evaluate, tournam
 
 log = logging.getLogger("orchestrator")
 TERMINAL = ("ARRIVED", "FAILED", "CANCELLED")
+
+
+def binding_constraints(ships, snap):
+    """What limits this plan (D8): depot dispatch and stock left, station headroom left."""
+    from .detect import dispatch_used
+    out, by_depot, by_station = [], {}, {}
+    for s in ships:
+        by_depot[s["source_depot_id"]] = by_depot.get(s["source_depot_id"], 0) + s["quantity"]
+        k = (s["destination_station_id"], s["fuel_type"])
+        by_station[k] = by_station.get(k, 0) + s["quantity"]
+    for did, q in by_depot.items():
+        d = snap["depots"][did]
+        used, cap = dispatch_used(snap, did) + q, d["dispatch_capacity_per_tick"]
+        out.append(f"{did} dispatch {used:,.0f}/{cap:,.0f} L this tick ({used / cap:.0%})" + (" - BINDING" if used >= 0.95 * cap else ""))
+    for (sid, f), q in by_station.items():
+        s = snap["stations"][sid]
+        head = s["capacity"][f] - s["inventory"][f] - q
+        out.append(f"{sid} {f} headroom after plan {head:,.0f} L" + (" - BINDING" if head < 0.05 * s["capacity"][f] else ""))
+    return out
 BUG_CODES = ("IDEMPOTENCY_KEY_MISMATCH", "ROUTE_MISMATCH", "NOT_FOUND", "VALIDATION_ERROR")
 
 
@@ -44,6 +64,8 @@ class Orchestrator:
         self.last_cycle = {"ok": False, "at": None, "ms": None, "error": "not started"}
         self.invalid = None
         self.last_sse_tick = time.time()
+        self.epoch = int(time.time())  # demand history / allocation ids are per simulator epoch (reset -> new epoch)
+        self.incident_start, self.last_recovery = None, None
         store.on_invalid = self.on_invalid
 
     # ---------- loop ----------
@@ -79,6 +101,7 @@ class Orchestrator:
                 log.warning("sim.reset_detected", extra={"event": "sim.reset", "tick": snap["tick"]})
                 self.fc.reset(), self.det.reset()
                 self.seen_active.clear()
+                self.epoch, self.incident_start = int(time.time()), None
                 self.last_decision_tick = -10 ** 9
                 for d in self.audit.list("PENDING_APPROVAL", 200):
                     self._set_status(d, "EXPIRED", "simulator reset")
@@ -86,7 +109,9 @@ class Orchestrator:
                     for d in self.audit.list(st, 500):
                         self._set_status(d, "EPOCH_ENDED", "simulator reset; allocation ids no longer refer to this plan")
             try:
-                self.fc.ingest(await self.store.demand_rows(self.fc.last_tick), snap)
+                rows = await self.store.demand_rows(self.fc.last_tick)
+                self.audit.store_demand(self.epoch, rows)
+                self.fc.ingest(rows, snap)
             except SimError as e:  # forecast keeps its previous corrections
                 log.warning("demand_history.failed", extra={"event": "demand_history.failed", "error": str(e)})
             new_tick = snap["tick"] != self.analyzed_tick
@@ -118,6 +143,18 @@ class Orchestrator:
             self.audit.alert("raised", a)
         for a in resolved:
             self.audit.alert("resolved", a)
+        crit = any(a["severity"] == "critical" for a in self.det.active.values())
+        M.INCIDENT_ACTIVE.set(int(crit))
+        if crit and self.incident_start is None:
+            self.incident_start = snap["tick"]
+        elif not crit and self.incident_start is not None:
+            self.last_recovery = {"from_tick": self.incident_start, "to_tick": snap["tick"],
+                                  "ticks": snap["tick"] - self.incident_start}
+            M.RECOVERY_TICKS.set(self.last_recovery["ticks"])
+            self.audit.alert("recovered", {"type": "recovery", "severity": "info", "entity": "network", "tick": snap["tick"],
+                                           "message": f"no critical alerts after {self.last_recovery['ticks']} ticks "
+                                                      f"(since tick {self.incident_start})"})
+            self.incident_start = None
         self.analyzed_tick = snap["tick"]
         self.router = route_rules(self.flags, self.risks, list(self.det.active.values()))
         for e in snap["events"]:  # incident log: one summary per event activation
@@ -164,6 +201,11 @@ class Orchestrator:
             log.error("decide.failed", extra={"event": "decide.failed", "error": str(e)})
             return None
         gate = self._gate(t["shipments"], snap)
+        win = next(c for c in t["candidates"] if c["algorithm"] == t["winner"])
+        sc = win.get("scenarios") or {}
+        if sc and sc["p90"]["unmet"] - sc["p50"]["unmet"] > 1000:
+            gate["notes"].append(f"plan is sensitive to demand uncertainty: P90 unmet {sc['p90']['unmet']:,.0f} L "
+                                 f"vs P50 {sc['p50']['unmet']:,.0f} L")
         top = sorted(self.risks.values(), key=lambda r: -r["p_stockout"])[:5]
         d = {"id": uuid.uuid4().hex[:12], "created_at": time.time(), "tick": snap["tick"], "sim_time": snap["sim_time"],
              "mode": self.mode, "router": router, "algorithm": t["winner"], "best_algorithm": t["best"],
@@ -172,6 +214,7 @@ class Orchestrator:
                             {"shipments": len(c["shipments"]), "p50": (c.get("scenarios") or {}).get("p50")}
                             for c in t["candidates"]],
              "shipments": t["shipments"], "expected": t["expected"], "top_risks": top,
+             "constraints": binding_constraints(t["shipments"], snap),
              "alerts": list(self.det.active.values())[:20], "gate": gate, "status": "PROPOSED",
              "actor": None, "results": []}
         if not execute:
@@ -381,6 +424,18 @@ class Orchestrator:
                 self._set_status(d, "EXPIRED", f"not approved within {config.PLAN_TTL_TICKS} ticks")
 
     # ---------- read model ----------
+    def _regions(self, snap):
+        out = []
+        for rid, reg in snap["regions"].items():
+            sts = [s for s in snap["stations"].values() if s["region_id"] == rid]
+            rk = [r for r in (self.risks or {}).values() if r["station_id"] in {s["id"] for s in sts}]
+            out.append({"id": rid, "name": reg["name"], "stations": len(sts),
+                        "stock": {f: round(sum(s["inventory"][f] for s in sts)) for f in FUELS},
+                        "demand_4h": {f: round(sum(r["demand_4h"] for r in rk if r["fuel"] == f)) for f in FUELS},
+                        "worst_p_stockout": max((r["p_stockout"] for r in rk), default=0),
+                        "outages": [s["id"] for s in sts if s["status"] != "OPEN"]})
+        return out
+
     def _build_view(self):
         snap = self.store.snap
         if not snap:
@@ -396,6 +451,10 @@ class Orchestrator:
             "events": [e for e in snap["events"] if e["status"] != "RESOLVED"],
             "in_flight": [a for a in snap["allocations"] if a["status"] in ("PENDING", "IN_TRANSIT")],
             "risks": sorted((self.risks or {}).values(), key=lambda r: -r["p_stockout"]),
+            "scenario": {"id": snap.get("scenario_id"), "seed": snap.get("seed"), "epoch": self.epoch},
+            "regions": self._regions(snap),
+            "supply_outlook": supply_outlook(snap, self.paths) if self.paths else [],
+            "incident": {"active_since_tick": self.incident_start, "last_recovery": self.last_recovery},
             "alerts": list(self.det.active.values()),
             "forecast_mape": self.fc.mape,
         }

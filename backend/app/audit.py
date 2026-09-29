@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS decisions (
   id TEXT PRIMARY KEY, created_at REAL, tick INTEGER, status TEXT, actor TEXT,
   regime TEXT, algorithm TEXT, gate TEXT, body TEXT);
 CREATE INDEX IF NOT EXISTS decisions_status ON decisions(status);
+CREATE TABLE IF NOT EXISTS demand (
+  epoch INTEGER, id INTEGER, tick INTEGER, station TEXT, fuel TEXT, demand REAL, served REAL, unmet REAL,
+  PRIMARY KEY (epoch, id));
 CREATE TABLE IF NOT EXISTS llm_cache (hash TEXT PRIMARY KEY, created_at REAL, body TEXT);
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY AUTOINCREMENT, created_at REAL, tick INTEGER, kind TEXT, type TEXT,
@@ -63,6 +66,16 @@ class Audit:
         with self.lock, self.db:
             self.db.execute("INSERT INTO alerts(created_at, tick, kind, type, severity, entity, message) VALUES (?,?,?,?,?,?,?)",
                             (time.time(), a.get("tick"), kind, a["type"], a["severity"], a["entity"], a["message"]))
+
+    def store_demand(self, epoch, rows):
+        with self.lock, self.db:
+            self.db.executemany("INSERT OR IGNORE INTO demand VALUES (?,?,?,?,?,?,?,?)",
+                                [(epoch, r["id"], r["tick"], r["station_id"], r["fuel_type"], r["demand_liters"],
+                                  r["served_liters"], r["unmet_liters"]) for r in rows])
+
+    def demand_count(self, epoch):
+        with self.lock:
+            return self.db.execute("SELECT COUNT(*) FROM demand WHERE epoch=?", (epoch,)).fetchone()[0]
 
     def llm_get(self, h):
         with self.lock:

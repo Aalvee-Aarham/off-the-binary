@@ -65,7 +65,7 @@ async function refresh() {
   $("depots").innerHTML = s.depots.map(d => `<tr><td>${esc(d.id)}</td><td class="${d.status === "OPEN" ? "" : "warning"}">${d.status}</td><td>D ${fmt(d.inventory.DIESEL)} · P ${fmt(d.inventory.PETROL)} · O ${fmt(d.inventory.OCTANE)}</td></tr>`).join("");
   $("routes").innerHTML = s.routes.filter(r => r.status !== "AVAILABLE").map(r => `<tr class="bad"><td>${esc(r.id)}</td><td>${r.status}</td></tr>`).join("");
   const pend = dec.filter(d => d.status === "PENDING_APPROVAL");
-  $("pending").innerHTML = pend.map(d => `<div><b>${d.algorithm}</b> · ${esc(d.router.regime)} · tick ${d.tick}<br><span class="mut">${esc(d.gate.reasons.join("; "))}</span><br>${impact(d.expected)}
+  $("pending").innerHTML = pend.map(d => `<div><b>${d.algorithm}</b> · ${esc(d.router.regime)} · tick ${d.tick} (${s.tick - d.tick} ticks old)<br><span class="mut">${esc(d.gate.reasons.join("; "))}</span><br>${impact(d.expected)}<br><small>${esc((d.explanation || {}).text || "")}</small>
     ${d.shipments.map((x, i) => `<div>${ship(x)} <input size=6 value="${x.quantity}" onchange="editq('${d.id}',${i},this.value)"></div>`).join("")}
     <button onclick="approve('${d.id}')">Approve</button> <button onclick="reject('${d.id}')">Reject</button></div><hr>`).join("") || "none";
   $("history").innerHTML = dec.filter(d => d.status !== "PENDING_APPROVAL").map(d => `<tr><td>${d.tick}</td><td>${d.status}</td><td>${d.algorithm}${d.router_hit === false ? " *" : ""}</td><td>${d.actor ?? ""}</td><td title="${esc((d.shipments || []).map(ship).join("\n"))}">${(d.shipments || []).length} ships</td><td class=mut>${impact(d.expected)}</td></tr>`).join("");
