@@ -10,6 +10,27 @@
 | `POST /api/decisions/recommend` | End-to-end decision: forecast, risks, 6 plans, each scored on the twin under 3 demand scenarios (up to 18 twin rollouts of 32 ticks; identical plans are scored once). Nothing is executed. | 1 / 4 / 8 |
 | Same two paths under an injected simulator `latency` fault (500 ms on every `/v1` call) | Shows the read and decide paths are decoupled from simulator latency | same |
 
+## Results: CI containers (real simulator image, backend container, GitHub-hosted runner)
+
+This is the `evidence` artifact of CI run 36536985884. The load generator runs outside the backend container.
+
+| Path | VUs | RPS | p50 ms | p95 ms | p99 ms | Errors | Backend CPU (cores) | RSS MB |
+|---|---|---|---|---|---|---|---|---|
+| `GET /api/state` | 10 | 606 | 9 | 45 | 66 | 0% | 0.21 | 120 |
+| `GET /api/state` | 50 | 480 | 77 | 284 | 433 | 0% | 0.17 | 120 |
+| `GET /api/state` | 100 | 410 | 174 | 681 | 1081 | 0% | 0.15 | 120 |
+| `POST /recommend` | 1 | 28 | 35 | 39 | 48 | 0% | 0.97 | 120 |
+| `POST /recommend` | 4 | 32 | 122 | 163 | 186 | 0% | 1.35 | 148 |
+| `POST /recommend` | 8 | 33 | 245 | 324 | 379 | 0% | 1.34 | 154 |
+| `/api/state` under 500 ms sim fault | 10 | 632 | 9 | 40 | 70 | 0% | 0.22 | 154 |
+| `/recommend` under 500 ms sim fault | 8 | 33 | 239 | 313 | 361 | 0% | 1.34 | 154 |
+
+**What the CI numbers show:**
+- **The read path stays fast.** `/api/state` sustains 400–600 RPS with p95 under 700 ms at 100 concurrent users.
+- **The decision pipeline tops out at about 33 decisions/s on roughly 1.3 cores.** Each decision is a 6-way twin tournament; the GIL plus thread offload caps it there. Latency grows linearly with concurrency, the expected queueing signature. The live loop needs about 0.5 decisions/s.
+- **Zero errors everywhere, including under the simulator fault.** Neither path calls the simulator per request.
+- **Memory is flat at 120–155 MB.**
+
 ## Results: local, indicative ([loadtest-local.md](loadtest-local.md))
 
 Everything ran on one 4-core laptop (i5-1145G7): the stand-in simulator, the backend, and the load generator. A CPU-heavy fine-tuning job was also running at the same time. CI produces clean container numbers (the `evidence` artifact).
