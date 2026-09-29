@@ -1,0 +1,176 @@
+{
+  "version": "v2",
+  "ticks": 300,
+  "seeds": 3,
+  "results": {
+    "ppo": {
+      "normal": {
+        "unmet_l": 566,
+        "service_level": 0.99802,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 248,
+        "service_level": 0.99928,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 5916,
+        "service_level": 0.97936,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 400,
+        "service_level": 0.99861,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 9558,
+        "service_level": 0.9732,
+        "failures": 0
+      },
+      "mean_unmet_l": 3338
+    },
+    "lp": {
+      "normal": {
+        "unmet_l": 580,
+        "service_level": 0.99798,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 262,
+        "service_level": 0.99924,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 7196,
+        "service_level": 0.97489,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 580,
+        "service_level": 0.99798,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 11591,
+        "service_level": 0.9675,
+        "failures": 0
+      },
+      "mean_unmet_l": 4042
+    },
+    "mpc": {
+      "normal": {
+        "unmet_l": 284,
+        "service_level": 0.99901,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 65,
+        "service_level": 0.99981,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 5400,
+        "service_level": 0.98116,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 284,
+        "service_level": 0.99901,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 9983,
+        "service_level": 0.97201,
+        "failures": 0
+      },
+      "mean_unmet_l": 3203
+    },
+    "greedy": {
+      "normal": {
+        "unmet_l": 580,
+        "service_level": 0.99798,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 262,
+        "service_level": 0.99924,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 7196,
+        "service_level": 0.97489,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 580,
+        "service_level": 0.99798,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 11924,
+        "service_level": 0.96656,
+        "failures": 0
+      },
+      "mean_unmet_l": 4108
+    },
+    "tournament_with_ppo": {
+      "normal": {
+        "unmet_l": 284,
+        "service_level": 0.99901,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 128,
+        "service_level": 0.99963,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 5366,
+        "service_level": 0.98128,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 284,
+        "service_level": 0.99901,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 9897,
+        "service_level": 0.97225,
+        "failures": 0
+      },
+      "mean_unmet_l": 3192
+    },
+    "active_v1": {
+      "normal": {
+        "unmet_l": 351,
+        "service_level": 0.99878,
+        "failures": 0
+      },
+      "demand_spike": {
+        "unmet_l": 155,
+        "service_level": 0.99955,
+        "failures": 0
+      },
+      "single_route_disruption": {
+        "unmet_l": 6099,
+        "service_level": 0.97872,
+        "failures": 0
+      },
+      "supply_shortfall": {
+        "unmet_l": 351,
+        "service_level": 0.99878,
+        "failures": 0
+      },
+      "combined": {
+        "unmet_l": 10250,
+        "service_level": 0.97126,
+        "failures": 0
+      },
+      "mean_unmet_l": 3441
+    }
+  },
+  "passes_gate": true
+}
