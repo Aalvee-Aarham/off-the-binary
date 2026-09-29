@@ -123,8 +123,10 @@ class Orchestrator:
             decision = None
             due = snap["tick"] - self.last_decision_tick >= config.DECIDE_EVERY_TICKS or any(
                 a["severity"] == "critical" for a in raised)
-            operator_editing = any(d.get("edited_by") for d in self.audit.list("PENDING_APPROVAL", 20))
-            if force or (new_tick and due and not operator_editing):
+            pending = self.audit.list("PENDING_APPROVAL", 20)
+            # an operator is working on a plan: edited, or MANUAL mode (never yank a plan out from under a reviewer)
+            operator_owns = any(d.get("edited_by") for d in pending) or (self.mode == "MANUAL" and pending)
+            if force or (new_tick and due and not operator_owns):
                 decision = await self.decide(snap, execute=True)
             ms = (time.perf_counter() - t0) * 1000
             self.budget = ms > config.CYCLE_BUDGET_MS
