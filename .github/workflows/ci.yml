@@ -63,14 +63,11 @@ jobs:
           done
           curl -fs localhost:8080/api/health | python -m json.tool
           test "$s" = healthy
-      - name: Run the simulator + inject a crisis, let the backend decide
+      - name: Scripted demo against the real simulator (normal -> spike -> review -> crisis -> outage -> recovery)
+        working-directory: backend
         run: |
-          H="-H X-Admin-Token:$ADMIN_TOKEN -H Content-Type:application/json"
-          curl -fs $H -X POST localhost:8080/api/sim/run
-          curl -fs $H -X POST localhost:8080/api/chaos/event -d '{"type":"demand_spike","duration_ticks":60,"parameters":{"multiplier":1.8}}'
-          sleep 40
-          curl -fs "localhost:8080/api/decisions?limit=200" > decisions.json
-          python -c "import json; d=json.load(open('decisions.json')); print(len(d), 'decisions'); assert d"
+          python -m scripts.demo --token "$ADMIN_TOKEN" --out ../demo-run.md
+          curl -fs "localhost:8080/api/decisions?limit=200" > ../decisions.json
       - name: Load test (incl. simulator latency fault)
         working-directory: backend
         run: python -m scripts.loadtest --token "$ADMIN_TOKEN" --seconds 15 --out ../loadtest
@@ -87,6 +84,7 @@ jobs:
           path: |
             calibration.json
             decisions.json
+            demo-run.md
             loadtest.json
             loadtest.md
             metrics.txt
