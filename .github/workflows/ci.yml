@@ -63,6 +63,7 @@ jobs:
           done
           curl -fs localhost:8080/api/health | python -m json.tool
           test "$s" = healthy
+          curl -fs localhost:8080/api/models | python -c "import json,sys; m=json.load(sys.stdin)['ppo']; print('ppo', m['active'], m['loaded']); assert m['loaded']"
       - name: Scripted demo against the real simulator (normal -> spike -> review -> crisis -> outage -> recovery)
         working-directory: backend
         run: |
